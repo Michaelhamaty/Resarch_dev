@@ -1,0 +1,8 @@
+name: smoke_adaptive_2b
+system: adaptive
+prompt: table_parse_v1
+first_pass_budget: internvl2_2b_low
+reparse_budget: internvl2_2b_high
+split: smoke
+seed: 0
+description: Smoke-scale adaptive 2B run used to exercise the pipeline wiring.

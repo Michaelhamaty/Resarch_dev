@@ -1,0 +1,7 @@
+name: table_parse_v1
+version: 1
+description: Fixed full-page table-parsing prompt. Must stay identical across compared systems.
+template: |
+  Extract every table on this page and output each one as an HTML <table> block
+  in the order it appears. Preserve row and column structure, including spans.
+  Leave non-table text as ordinary Markdown.

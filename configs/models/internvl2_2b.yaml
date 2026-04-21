@@ -1,0 +1,4 @@
+name: internvl2_2b
+hf_id: OpenGVLab/InternVL2-2B
+dtype: bfloat16
+description: Small multimodal model used for the first-pass parse and optional reparse.

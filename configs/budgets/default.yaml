@@ -1,0 +1,20 @@
+# Placeholder tile / decode budgets. Final values are frozen by the calibration
+# milestone; these are only wiring defaults so the pipeline can be exercised.
+budgets:
+  - name: internvl2_2b_low
+    model: internvl2_2b
+    tile_budget: 6
+    max_new_tokens: 2048
+    description: Low-budget first-pass setting for InternVL2-2B.
+
+  - name: internvl2_2b_high
+    model: internvl2_2b
+    tile_budget: 18
+    max_new_tokens: 4096
+    description: High-budget reparse setting for InternVL2-2B.
+
+  - name: internvl2_8b_matched
+    model: internvl2_8b
+    tile_budget: 6
+    max_new_tokens: 2048
+    description: Matched-cost 8B baseline setting.

@@ -1,0 +1,4 @@
+name: internvl2_8b
+hf_id: OpenGVLab/InternVL2-8B
+dtype: bfloat16
+description: Larger reference model used only for the matched-cost 8B baseline.
