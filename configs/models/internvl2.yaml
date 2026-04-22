@@ -1,0 +1,13 @@
+# InternVL2 model registry. Phase 2 uses `adapter_kind: stub` for both
+# entries so the scaffold runs deterministically on CPU with no model
+# weights. A future phase will add a real `internvl2` adapter kind and
+# swap these entries over without changing caller code.
+models:
+  internvl2-2b:
+    adapter_kind: stub
+    model_id: OpenGVLab/InternVL2-2B
+    notes: "Small model baseline; real adapter plugs in later."
+  internvl2-8b:
+    adapter_kind: stub
+    model_id: OpenGVLab/InternVL2-8B
+    notes: "Upper-bound matched-cost baseline; real adapter plugs in later."

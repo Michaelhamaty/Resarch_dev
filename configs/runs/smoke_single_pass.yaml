@@ -1,0 +1,24 @@
+# Phase 2 smoke run: 2B stub adapter over the frozen calibration split at
+# the "low" budget, using the fixed v1 prompt. Re-run idempotently; the
+# stub is deterministic so outputs are byte-stable under a fixed run_id.
+run_id: smoke_2b_low_v1
+
+inputs:
+  split_name: calibration_split
+  manifest_path: data/splits/calibration_split.json
+  records_path: data/fixtures/sample_pages.json
+  image_root: data
+
+model:
+  config_path: configs/models/internvl2.yaml
+  name: internvl2-2b
+
+budget:
+  config_path: configs/budgets/phase2.yaml
+  name: low
+
+prompt:
+  config_path: configs/prompts/table_parse_v1.yaml
+
+output:
+  dir: outputs/runs/smoke_2b_low_v1

@@ -1,0 +1,17 @@
+# Fixed prompt for Phase 2+. Versioned per Contract 3 (reproducible prompts).
+# Any change must bump `version` and create a new file so prior runs stay
+# attributable to the exact prompt text they used.
+id: table_parse_v1
+version: 1
+description: >
+  Full-page markdown parse with tables emitted as HTML table blocks, no
+  explanatory prose. Used for both low-budget first pass and high-budget
+  reparse in the MVP.
+template: |
+  You are given one page image.
+
+  Transcribe the page contents as GitHub-flavored markdown. Emit every
+  table as a single raw HTML <table> block with <tr>/<th>/<td> elements;
+  do not convert tables to markdown pipe tables. Preserve the original
+  reading order of text and tables. Do not add any explanation, preface,
+  or commentary. Output only the page content.

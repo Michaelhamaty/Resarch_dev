@@ -1,0 +1,9 @@
+# Named compute budgets. `max_tiles` values are placeholders until Phase 5
+# calibration picks them on the calibration split; Phase 2 stubs ignore the
+# value but log the chosen budget so calibration tooling can land later
+# without changing the scaffold.
+budgets:
+  low:
+    max_tiles: 4
+  high:
+    max_tiles: 12

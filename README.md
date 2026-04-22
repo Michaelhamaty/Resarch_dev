@@ -37,7 +37,23 @@ uv run python scripts/subset_extraction/build_phase1_manifests.py \
 This writes four manifests (`eval_universe`, `hard_subset`,
 `calibration_split`, `held_out_eval_split`) under `data/splits/`.
 
+## Phase 2 — single-pass inference smoke
+
+Phase 2 runs each page in a manifest through one model + budget + prompt and
+writes structured artifacts. Uses a deterministic stub adapter so the smoke
+path is CPU-only. See
+[`docs/runbooks/phase2_single_pass.md`](docs/runbooks/phase2_single_pass.md).
+
+```bash
+uv run python scripts/fixtures/generate_placeholder_images.py
+uv run python scripts/main_runs/run_single_pass.py \
+    --config configs/runs/smoke_single_pass.yaml
+```
+
+Artifacts land under `outputs/runs/{run_id}/` as `raw/*.md`, `pages/*.json`,
+and `run.log.jsonl`.
+
 ## Status
 
-Phase 1 (dataset freezing) complete. Phase 2 (single-page inference scaffold)
-not started.
+Phase 1 (dataset freezing) and Phase 2 (single-pass inference scaffold, stub
+adapter) complete. Phase 3 (HTML extraction + structural verifier) not started.

@@ -5,6 +5,7 @@ description = "Matched-budget adaptive inference research MVP for complex Englis
 requires-python = ">=3.11,<3.12"
 dependencies = [
     "pyyaml>=6",
+    "pillow>=10",
 ]
 
 [project.optional-dependencies]
