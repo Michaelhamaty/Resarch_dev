@@ -1,0 +1,222 @@
+[
+  {
+    "page_id": "page_0001",
+    "image_path": "fixtures/images/page_0001.png",
+    "language": "en",
+    "contains_table": true,
+    "is_english_table_page": true,
+    "row_count": 25,
+    "col_count": 4,
+    "has_merged_cells": false,
+    "has_nested_headers": false
+  },
+  {
+    "page_id": "page_0002",
+    "image_path": "fixtures/images/page_0002.png",
+    "language": "en",
+    "contains_table": true,
+    "is_english_table_page": true,
+    "row_count": 6,
+    "col_count": 8,
+    "has_merged_cells": false,
+    "has_nested_headers": false
+  },
+  {
+    "page_id": "page_0003",
+    "image_path": "fixtures/images/page_0003.png",
+    "language": "en",
+    "contains_table": true,
+    "is_english_table_page": true,
+    "row_count": 10,
+    "col_count": 3,
+    "has_merged_cells": true,
+    "has_nested_headers": false
+  },
+  {
+    "page_id": "page_0004",
+    "image_path": "fixtures/images/page_0004.png",
+    "language": "en",
+    "contains_table": true,
+    "is_english_table_page": true,
+    "row_count": 12,
+    "col_count": 5,
+    "has_merged_cells": false,
+    "has_nested_headers": true
+  },
+  {
+    "page_id": "page_0005",
+    "image_path": "fixtures/images/page_0005.png",
+    "language": "en",
+    "contains_table": true,
+    "is_english_table_page": true,
+    "row_count": 8,
+    "col_count": 3,
+    "has_merged_cells": false,
+    "has_nested_headers": false
+  },
+  {
+    "page_id": "page_0006",
+    "image_path": "fixtures/images/page_0006.png",
+    "language": "en",
+    "contains_table": true,
+    "is_english_table_page": true,
+    "row_count": 5,
+    "col_count": 4,
+    "has_merged_cells": false,
+    "has_nested_headers": false
+  },
+  {
+    "page_id": "page_0007",
+    "image_path": "fixtures/images/page_0007.png",
+    "language": "en",
+    "contains_table": true,
+    "is_english_table_page": true,
+    "row_count": 11,
+    "col_count": 2,
+    "has_merged_cells": false,
+    "has_nested_headers": false
+  },
+  {
+    "page_id": "page_0008",
+    "image_path": "fixtures/images/page_0008.png",
+    "language": "en",
+    "contains_table": true,
+    "is_english_table_page": true,
+    "row_count": 7,
+    "col_count": 5,
+    "has_merged_cells": false,
+    "has_nested_headers": false
+  },
+  {
+    "page_id": "page_0009",
+    "image_path": "fixtures/images/page_0009.png",
+    "language": "en",
+    "contains_table": true,
+    "is_english_table_page": true,
+    "row_count": 9,
+    "col_count": 4,
+    "has_merged_cells": false,
+    "has_nested_headers": false
+  },
+  {
+    "page_id": "page_0010",
+    "image_path": "fixtures/images/page_0010.png",
+    "language": "en",
+    "contains_table": true,
+    "is_english_table_page": true,
+    "row_count": 14,
+    "col_count": 4,
+    "has_merged_cells": false,
+    "has_nested_headers": false
+  },
+  {
+    "page_id": "page_0011",
+    "image_path": "fixtures/images/page_0011.png",
+    "language": "en",
+    "contains_table": true,
+    "is_english_table_page": true,
+    "row_count": 6,
+    "col_count": 3,
+    "has_merged_cells": false,
+    "has_nested_headers": false
+  },
+  {
+    "page_id": "page_0012",
+    "image_path": "fixtures/images/page_0012.png",
+    "language": "en",
+    "contains_table": true,
+    "is_english_table_page": true,
+    "row_count": 13,
+    "col_count": 4,
+    "has_merged_cells": false,
+    "has_nested_headers": false
+  },
+  {
+    "page_id": "page_0013",
+    "image_path": "fixtures/images/page_0013.png",
+    "language": "en",
+    "contains_table": true,
+    "is_english_table_page": true,
+    "row_count": 4,
+    "col_count": 5,
+    "has_merged_cells": false,
+    "has_nested_headers": false
+  },
+  {
+    "page_id": "page_0014",
+    "image_path": "fixtures/images/page_0014.png",
+    "language": "en",
+    "contains_table": true,
+    "is_english_table_page": true,
+    "row_count": 9,
+    "col_count": 3,
+    "has_merged_cells": false,
+    "has_nested_headers": false
+  },
+  {
+    "page_id": "page_0015",
+    "image_path": "fixtures/images/page_0015.png",
+    "language": "en",
+    "contains_table": false,
+    "is_english_table_page": false,
+    "row_count": null,
+    "col_count": null,
+    "has_merged_cells": false,
+    "has_nested_headers": false
+  },
+  {
+    "page_id": "page_0016",
+    "image_path": "fixtures/images/page_0016.png",
+    "language": "en",
+    "contains_table": false,
+    "is_english_table_page": false,
+    "row_count": null,
+    "col_count": null,
+    "has_merged_cells": false,
+    "has_nested_headers": false
+  },
+  {
+    "page_id": "page_0017",
+    "image_path": "fixtures/images/page_0017.png",
+    "language": "zh",
+    "contains_table": true,
+    "is_english_table_page": false,
+    "row_count": 12,
+    "col_count": 4,
+    "has_merged_cells": true,
+    "has_nested_headers": false
+  },
+  {
+    "page_id": "page_0018",
+    "image_path": "fixtures/images/page_0018.png",
+    "language": "zh",
+    "contains_table": true,
+    "is_english_table_page": false,
+    "row_count": 30,
+    "col_count": 8,
+    "has_merged_cells": true,
+    "has_nested_headers": true
+  },
+  {
+    "page_id": "page_0019",
+    "image_path": "fixtures/images/page_0019.png",
+    "language": "ja",
+    "contains_table": true,
+    "is_english_table_page": false,
+    "row_count": 10,
+    "col_count": 5,
+    "has_merged_cells": false,
+    "has_nested_headers": false
+  },
+  {
+    "page_id": "page_0020",
+    "image_path": "fixtures/images/page_0020.png",
+    "language": "de",
+    "contains_table": false,
+    "is_english_table_page": false,
+    "row_count": null,
+    "col_count": null,
+    "has_merged_cells": false,
+    "has_nested_headers": false
+  }
+]

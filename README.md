@@ -24,6 +24,20 @@ uv sync --extra dev
 uv run pytest
 ```
 
+## Phase 1 — freeze the universe
+
+Phase 1 locks down the immutable page-ID manifests used by every later
+milestone. See [`docs/runbooks/phase1_freeze_universe.md`](docs/runbooks/phase1_freeze_universe.md).
+
+```bash
+uv run python scripts/subset_extraction/build_phase1_manifests.py \
+    --config configs/dataset/phase1.yaml
+```
+
+This writes four manifests (`eval_universe`, `hard_subset`,
+`calibration_split`, `held_out_eval_split`) under `data/splits/`.
+
 ## Status
 
-Milestone 1 (repo scaffold). No runtime code yet.
+Phase 1 (dataset freezing) complete. Phase 2 (single-page inference scaffold)
+not started.

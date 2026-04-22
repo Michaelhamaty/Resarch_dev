@@ -1,0 +1,23 @@
+{
+  "generated_with_seed": 1337,
+  "manifest_kind": "held_out_eval_split",
+  "page_ids": [
+    "page_0003",
+    "page_0004",
+    "page_0006",
+    "page_0008",
+    "page_0009",
+    "page_0010",
+    "page_0011",
+    "page_0012",
+    "page_0014"
+  ],
+  "pinning": {
+    "dataset_name": "omnidocbench",
+    "eval_code_commit": "TBD",
+    "notes": "Phase 1 fixture run. Replace when real OmniDocBench metadata lands.",
+    "snapshot_version": "v1-2024-fixture",
+    "source": "data/fixtures/sample_pages.json"
+  },
+  "schema_version": 1
+}

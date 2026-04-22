@@ -1,0 +1,25 @@
+pinning:
+  dataset_name: omnidocbench
+  snapshot_version: v1-2024-fixture
+  eval_code_commit: TBD
+  source: data/fixtures/sample_pages.json
+  notes: "Phase 1 fixture run. Replace when real OmniDocBench metadata lands."
+
+input:
+  records_path: data/fixtures/sample_pages.json
+
+subsets:
+  hard_table_rule:
+    min_row_count: 20
+    min_col_count: 6
+    require_any_of:
+      - has_merged_cells
+      - has_nested_headers
+
+split:
+  seed: 1337
+  calibration_size: 5
+  eval_size: null  # null = take remainder of the eval universe
+
+output:
+  manifests_dir: data/splits
