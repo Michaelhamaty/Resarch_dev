@@ -6,6 +6,7 @@ requires-python = ">=3.11,<3.12"
 dependencies = [
     "pyyaml>=6",
     "pillow>=10",
+    "lxml>=5",
 ]
 
 [project.optional-dependencies]

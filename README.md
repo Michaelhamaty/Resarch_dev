@@ -53,7 +53,25 @@ uv run python scripts/main_runs/run_single_pass.py \
 Artifacts land under `outputs/runs/{run_id}/` as `raw/*.md`, `pages/*.json`,
 and `run.log.jsonl`.
 
+## Phase 3 — deterministic structural verifier
+
+Phase 3 adds the pure-function verifier that inspects first-pass raw
+page output and returns `PASS` or `REPARSE` based on five structural
+checks (presence, parsability, span expansion, rectangular consistency,
+degenerate-table). See
+[`docs/runbooks/phase3_verifier.md`](docs/runbooks/phase3_verifier.md).
+
+```python
+from adaptive_inference.verifier.structural import verify_page_tables
+result = verify_page_tables(raw_page_markdown)
+```
+
+No orchestration, logging, or reparse logic yet — those wire in during
+Phase 4.
+
 ## Status
 
-Phase 1 (dataset freezing) and Phase 2 (single-pass inference scaffold, stub
-adapter) complete. Phase 3 (HTML extraction + structural verifier) not started.
+Phase 1 (dataset freezing), Phase 2 (single-pass inference scaffold,
+stub adapter), and Phase 3 (HTML extraction + deterministic structural
+verifier) complete. Phase 4 (adaptive routing / one-shot reparse) not
+started.
