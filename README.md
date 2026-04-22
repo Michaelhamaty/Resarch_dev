@@ -69,9 +69,24 @@ result = verify_page_tables(raw_page_markdown)
 No orchestration, logging, or reparse logic yet — those wire in during
 Phase 4.
 
+## Phase 4 — adaptive orchestration
+
+Phase 4 composes the single-pass scaffold and the verifier into the
+MVP's one-shot adaptive pipeline: low-budget parse → verifier →
+optional high-budget reparse → final selected artifact. See
+[`docs/runbooks/phase4_adaptive.md`](docs/runbooks/phase4_adaptive.md).
+
+```bash
+uv run python scripts/main_runs/run_adaptive.py \
+    --config configs/runs/smoke_adaptive.yaml
+```
+
+Artifacts land under `outputs/runs/{run_id}/` as `first_pass/`,
+`reparse/` (only if triggered), `final/`, and `run.log.jsonl`.
+
 ## Status
 
 Phase 1 (dataset freezing), Phase 2 (single-pass inference scaffold,
-stub adapter), and Phase 3 (HTML extraction + deterministic structural
-verifier) complete. Phase 4 (adaptive routing / one-shot reparse) not
-started.
+stub adapter), Phase 3 (structural verifier), and Phase 4 (adaptive
+orchestration, one-shot reparse, extended run log) complete. Phase 5
+(budget calibration) not started.

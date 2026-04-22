@@ -7,8 +7,10 @@ This document captures the current state of the `adaptive-inference` repository,
 
 ## What Has Been Done So Far
 
-The project has completed **Phase 1 (dataset freezing)** and **Phase 2
-(single-pass inference scaffold, stub adapter)** for the research MVP:
+The project has completed **Phase 1 (dataset freezing)**, **Phase 2
+(single-pass inference scaffold, stub adapter)**, **Phase 3
+(deterministic structural verifier)**, and **Phase 4 (adaptive
+orchestration and run integration)** for the research MVP:
 
 - The repository scaffold and packaging setup are in place.
 - A fixture-based dataset pipeline has been implemented under `src/adaptive_inference/dataset/`.
@@ -35,7 +37,11 @@ The project has completed **Phase 1 (dataset freezing)** and **Phase 2
 Status from `README.md`:
 - Phase 1 complete.
 - Phase 2 complete (stub adapter; real InternVL2 integration pending).
-- Phase 3 (HTML extraction + structural verifier) not started.
+- Phase 3 complete (deterministic structural verifier).
+- Phase 4 complete (adaptive orchestration, one-shot reparse, extended
+  run log with verifier metadata, `first_pass/` + `reparse/` + `final/`
+  artifact layout, smoke adaptive CLI).
+- Phase 5 (budget calibration) not started.
 
 ## Technology Used
 
@@ -116,6 +122,19 @@ Status from `README.md`:
 - `src/adaptive_inference/runner/output_writer.py` — Writes `raw/{page_id}.md` and `pages/{page_id}.json` per page.
 - `src/adaptive_inference/runner/runtime_logger.py` — Append-only JSONL runtime logger with a `reset_log` helper for idempotent re-runs.
 - `src/adaptive_inference/runner/single_pass.py` — Orchestrator: loads pages, builds an adapter, runs each page, writes artifacts and log entries, returns a summary.
+- `src/adaptive_inference/config/adaptive_runs.py` — Phase 4 `AdaptiveRunConfig` dataclass + YAML loader (one model + prompt + paired low/high budgets).
+- `src/adaptive_inference/policy/__init__.py` — Policy package exports (`should_reparse`).
+- `src/adaptive_inference/policy/escalation.py` — One-shot escalation policy: `should_reparse(verifier_result) -> bool`.
+- `src/adaptive_inference/runner/adaptive.py` — Phase 4 adaptive orchestrator: low-budget parse → verifier → optional one-shot high-budget reparse → final artifacts + log.
+- `src/adaptive_inference/runner/adaptive_writer.py` — Subfolder-aware artifact writer for `first_pass/`, `reparse/`, `final/`.
+- `src/adaptive_inference/runner/adaptive_logger.py` — Phase 4 JSONL logger with extended per-page schema (verifier decision, budgets, split runtimes, artifact paths).
+- `configs/runs/smoke_adaptive.yaml` — Phase 4 smoke adaptive run config (stub adapter, paired low/high budgets, calibration split).
+- `scripts/main_runs/run_adaptive.py` — Phase 4 smoke CLI.
+- `docs/runbooks/phase4_adaptive.md` — Phase 4 runbook.
+- `tests/config/test_adaptive_runs.py` — `AdaptiveRunConfig` loader tests.
+- `tests/policy/__init__.py`, `tests/policy/test_escalation.py` — Policy tests.
+- `tests/runner/test_adaptive.py` — Orchestrator tests (PASS branch, REPARSE branch, log schema, idempotent re-run, empty manifest, Contract-1 at-most-one-reparse).
+- `tests/smoke/test_adaptive_smoke.py` — End-to-end Phase 4 smoke test.
 
 ### Tests
 

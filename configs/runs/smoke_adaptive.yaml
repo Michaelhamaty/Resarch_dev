@@ -1,0 +1,28 @@
+# Phase 4 smoke adaptive run: the 2B stub adapter over the frozen
+# calibration split, with the v1 prompt and paired low/high budgets.
+# The stub's output is deterministic and the same at both budgets, so
+# this smoke path only exercises orchestration wiring (first-pass,
+# verifier, optional reparse, artifact layout, log schema) — not any
+# claim about verifier realism or escalation helpfulness.
+run_id: smoke_2b_adaptive_v1
+
+inputs:
+  split_name: calibration_split
+  manifest_path: data/splits/calibration_split.json
+  records_path: data/fixtures/sample_pages.json
+  image_root: data
+
+model:
+  config_path: configs/models/internvl2.yaml
+  name: internvl2-2b
+
+budget:
+  config_path: configs/budgets/phase2.yaml
+  low_name: low
+  high_name: high
+
+prompt:
+  config_path: configs/prompts/table_parse_v1.yaml
+
+output:
+  dir: outputs/runs/smoke_2b_adaptive_v1
