@@ -84,9 +84,27 @@ uv run python scripts/main_runs/run_adaptive.py \
 Artifacts land under `outputs/runs/{run_id}/` as `first_pass/`,
 `reparse/` (only if triggered), `final/`, and `run.log.jsonl`.
 
+## Phase 5 — budget calibration
+
+Phase 5 sweeps candidate budgets on the **calibration split only** and
+freezes `B_low`, `B_high`, `B_fix_2B`, `B_fix_8B` into a stable artifact
+consumed by Phase 6. Cost is expressed in `max_tiles`; fixed baselines
+are picked to match the adaptive pair's measured cost within a relative
+tolerance. See
+[`docs/runbooks/phase5_calibration.md`](docs/runbooks/phase5_calibration.md).
+
+```bash
+uv run python scripts/calibration/run_calibration.py \
+    --config configs/calibration/phase5.yaml
+```
+
+Writes `configs/calibration/frozen_budgets.json` (the Phase 6 contract)
+and `outputs/calibration/sweep_summaries.jsonl` (per-sweep-point audit).
+
 ## Status
 
 Phase 1 (dataset freezing), Phase 2 (single-pass inference scaffold,
-stub adapter), Phase 3 (structural verifier), and Phase 4 (adaptive
-orchestration, one-shot reparse, extended run log) complete. Phase 5
-(budget calibration) not started.
+stub adapter), Phase 3 (structural verifier), Phase 4 (adaptive
+orchestration, one-shot reparse, extended run log), and Phase 5
+(budget calibration, frozen artifact) complete. Phase 6 (main
+benchmark runs) not started.
