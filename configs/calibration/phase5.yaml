@@ -1,0 +1,37 @@
+# Phase 5 calibration config. Sweeps candidate budgets on the frozen
+# calibration split and freezes (B_low, B_high, B_fix_2B, B_fix_8B) into
+# configs/calibration/frozen_budgets.json. Cost is the max_tiles proxy:
+# adaptive cost per page = B_low + reparse_rate * B_high.
+#
+# Stub adapters currently ignore max_tiles, so reparse_rate is 0 across
+# all adaptive pairs here and the numeric picks are placeholders — the
+# selection logic and artifact format are real and survive swapping in
+# a real InternVL2 adapter without changes.
+run_id: phase5_calibration_v1
+
+split:
+  manifest_path: data/splits/calibration_split.json
+  records_path: data/fixtures/sample_pages.json
+  image_root: data
+
+prompt_config_path: configs/prompts/table_parse_v1.yaml
+model_config_path: configs/models/internvl2.yaml
+
+candidates:
+  low_max_tiles: [2, 4, 6]
+  high_max_tiles: [8, 12, 16]
+  fixed_2b_max_tiles: [4, 6, 8, 10, 12]
+  fixed_8b_max_tiles: [4, 6, 8, 10, 12]
+
+target_adaptive_cost_tiles: 6.0
+matched_cost_tolerance: 0.10
+
+models:
+  adaptive: internvl2-2b
+  fixed_2b: internvl2-2b
+  fixed_8b: internvl2-8b
+
+output:
+  sweep_root: outputs/calibration/sweep
+  sweep_summaries_path: outputs/calibration/sweep_summaries.jsonl
+  frozen_budgets_path: configs/calibration/frozen_budgets.json
