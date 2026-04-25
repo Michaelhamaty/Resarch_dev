@@ -1,0 +1,36 @@
+# Phase 6 — Main experimental runs on the held-out evaluation split.
+#
+# This config does NOT contain budget numbers. The four Phase 6 budgets
+# (B_low, B_high, B_fix_2B, B_fix_8B) are read straight from the frozen
+# Phase 5 artifact so calibration and evaluation never drift.
+#
+# The held-out split is the only evaluation universe. Do not point this
+# at the calibration split — that would leak calibration into evaluation.
+
+run_set_id: phase6_main_v1
+
+# Phase 5 frozen artifact. Phase 6 treats this as read-only.
+frozen_budgets_path: configs/calibration/frozen_budgets.json
+
+inputs:
+  split_name: held_out_eval_split
+  manifest_path: data/splits/held_out_eval_split.json
+  records_path: data/fixtures/sample_pages.json
+  image_root: data
+
+model:
+  # Model registry (model_id, notes). Adapter_kind + model_name for each
+  # budget come from the frozen artifact; we only cross-check here.
+  config_path: configs/models/internvl2.yaml
+
+prompt:
+  # Must match the prompt frozen in Phase 5.
+  config_path: configs/prompts/table_parse_v1.yaml
+
+output:
+  root: outputs/runs/phase6
+
+random_escalation:
+  # Three seeds give Phase 7 a variance estimate over the random baseline.
+  # Probability is derived from the Phase 5 frozen artifact, not set here.
+  seeds: [0, 1, 2]
