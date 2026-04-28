@@ -110,10 +110,10 @@ def test_different_seeds_can_produce_different_reparse_counts(tmp_path: Path) ->
     # At minimum, *some* page should disagree across seeds. The strict
     # assertion is that per-page decisions differ somewhere — we read logs.
     a_lines = [
-        json.loads(l) for l in a.log_path.read_text(encoding="utf-8").splitlines()
+        json.loads(line) for line in a.log_path.read_text(encoding="utf-8").splitlines()
     ]
     b_lines = [
-        json.loads(l) for l in b.log_path.read_text(encoding="utf-8").splitlines()
+        json.loads(line) for line in b.log_path.read_text(encoding="utf-8").splitlines()
     ]
     a_map = {r["page_id"]: r["reparse_triggered"] for r in a_lines}
     b_map = {r["page_id"]: r["reparse_triggered"] for r in b_lines}
@@ -126,13 +126,13 @@ def test_rerun_produces_identical_log_lines_modulo_timing(tmp_path: Path) -> Non
     cfg = _build_cfg(tmp_path, ["page_0001", "page_0002"], seed=0, probability=1.0)
     s1 = run_adaptive_random(cfg)
     first = [
-        _strip_timing(json.loads(l))
-        for l in s1.log_path.read_text(encoding="utf-8").splitlines()
+        _strip_timing(json.loads(line))
+        for line in s1.log_path.read_text(encoding="utf-8").splitlines()
     ]
     s2 = run_adaptive_random(cfg)
     second = [
-        _strip_timing(json.loads(l))
-        for l in s2.log_path.read_text(encoding="utf-8").splitlines()
+        _strip_timing(json.loads(line))
+        for line in s2.log_path.read_text(encoding="utf-8").splitlines()
     ]
     assert first == second
 
