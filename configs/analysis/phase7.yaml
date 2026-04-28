@@ -1,0 +1,18 @@
+# Phase 7 — Final analysis on Phase 6 outputs.
+#
+# Phase 7 is read-only with respect to Phase 1-6 artifacts. It writes
+# only under <output.root>/<run_set_id>/.
+#
+# It does NOT compute table-level accuracy (TEDS / edit-distance). The
+# repo runs on stub adapters, so any accuracy number would be fictional.
+# The audit report ships with an explicit
+# `accuracy_status: not_applicable_stub_adapters` warn.
+
+inputs:
+  phase6_manifest_path: outputs/runs/phase6/manifest.json
+  frozen_budgets_path: configs/calibration/frozen_budgets.json
+  held_out_split_path: data/splits/held_out_eval_split.json
+  calibration_split_path: data/splits/calibration_split.json
+
+output:
+  root: outputs/analysis
