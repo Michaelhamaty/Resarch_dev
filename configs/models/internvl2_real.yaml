@@ -1,0 +1,18 @@
+# InternVL2 model registry — real GPU runs.
+#
+# Use this file from a run config when executing on a host with torch +
+# transformers + a GPU (e.g. Colab Pro). Importing this YAML alone does
+# nothing; the heavy stack is only loaded when `build_adapter` actually
+# constructs the InternVL2Adapter.
+#
+# 2B is wired to the real adapter. 8B is still stubbed — flip it once
+# 2B is verified end-to-end on real data.
+models:
+  internvl2-2b:
+    adapter_kind: internvl2
+    model_id: OpenGVLab/InternVL2-2B
+    notes: "Small model baseline; real HF adapter."
+  internvl2-8b:
+    adapter_kind: stub
+    model_id: OpenGVLab/InternVL2-8B
+    notes: "Upper-bound matched-cost baseline; still stubbed pending real 8B adapter."

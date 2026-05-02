@@ -1,13 +1,15 @@
-# InternVL2 model registry. Phase 2 uses `adapter_kind: stub` for both
-# entries so the scaffold runs deterministically on CPU with no model
-# weights. A future phase will add a real `internvl2` adapter kind and
-# swap these entries over without changing caller code.
+# InternVL2 model registry — stub entries.
+#
+# This file is intentionally pinned to `adapter_kind: stub` so the unit
+# tests, smoke tests, and CPU-only local pipeline keep working without
+# torch installed. For real GPU runs (Colab Pro etc.) point your run
+# config at `configs/models/internvl2_real.yaml` instead.
 models:
   internvl2-2b:
     adapter_kind: stub
     model_id: OpenGVLab/InternVL2-2B
-    notes: "Small model baseline; real adapter plugs in later."
+    notes: "Small model baseline; stub for local dev. Real adapter lives in internvl2_real.yaml."
   internvl2-8b:
     adapter_kind: stub
     model_id: OpenGVLab/InternVL2-8B
-    notes: "Upper-bound matched-cost baseline; real adapter plugs in later."
+    notes: "Upper-bound matched-cost baseline; stub until real 8B adapter is wired."

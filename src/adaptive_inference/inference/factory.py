@@ -19,7 +19,16 @@ def build_adapter(model_cfg: ModelConfig) -> InferenceAdapter:
     kind = model_cfg.adapter_kind
     if kind == "stub":
         return StubInferenceAdapter(model_name=model_cfg.name)
+    if kind == "internvl2":
+        # Imported lazily so the heavy torch/transformers stack is only
+        # touched on hosts that actually need it (e.g. a GPU runner).
+        from .internvl2 import InternVL2Adapter
+
+        return InternVL2Adapter(
+            model_name=model_cfg.name,
+            model_id=model_cfg.model_id,
+        )
     raise ValueError(
         f"Unknown adapter_kind={kind!r} for model {model_cfg.name!r}. "
-        f"Phase 2 supports: 'stub'."
+        f"Supported kinds: 'stub', 'internvl2'."
     )
