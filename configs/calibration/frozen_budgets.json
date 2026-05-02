@@ -25,7 +25,7 @@
       "name": "B_low"
     }
   },
-  "generated_at": "2026-04-23T23:37:30.393121+00:00",
+  "generated_at": "2026-05-02T02:44:31.798957+00:00",
   "pinning": {
     "calibration_config_path": "configs/calibration/phase5.yaml",
     "calibration_split_manifest": "data/splits/calibration_split.json",
