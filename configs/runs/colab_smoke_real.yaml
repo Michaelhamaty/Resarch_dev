@@ -1,0 +1,29 @@
+# Colab smoke run: real InternVL2-2B adapter over the frozen calibration
+# split, low budget, fixed v1 prompt. Identical to smoke_single_pass.yaml
+# except it points at the real model registry (internvl2_real.yaml), which
+# requires torch + transformers + a GPU.
+#
+# IMPORTANT: results are real model output but on PLACEHOLDER fixture
+# images (8x8 grayscale PNGs). This run is a plumbing test of the
+# adapter, not a research result.
+run_id: colab_smoke_2b_real_v1
+
+inputs:
+  split_name: calibration_split
+  manifest_path: data/splits/calibration_split.json
+  records_path: data/fixtures/sample_pages.json
+  image_root: data
+
+model:
+  config_path: configs/models/internvl2_real.yaml
+  name: internvl2-2b
+
+budget:
+  config_path: configs/budgets/phase2.yaml
+  name: low
+
+prompt:
+  config_path: configs/prompts/table_parse_v1.yaml
+
+output:
+  dir: outputs/runs/colab_smoke_2b_real_v1
