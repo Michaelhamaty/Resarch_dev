@@ -27,6 +27,10 @@ htmlcov/
 # Research outputs (created at runtime, never committed)
 outputs/
 
+# Real-data downloads (built by scripts/data/build_omnidocbench_fixture.py)
+data/omnidocbench/
+data/splits/omnidocbench/
+
 # OS
 .DS_Store
 

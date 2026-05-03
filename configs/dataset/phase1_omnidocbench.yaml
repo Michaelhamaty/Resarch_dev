@@ -1,0 +1,30 @@
+# Phase 1 config for the REAL OmniDocBench subset.
+#
+# Mirrors the layout of `phase1.yaml` but points at the records file
+# emitted by `scripts/data/build_omnidocbench_fixture.py`. Run that
+# downloader first; this config consumes its output.
+pinning:
+  dataset_name: omnidocbench
+  snapshot_version: v1-2024-real-subset
+  eval_code_commit: TBD
+  source: data/omnidocbench/records.json
+  notes: "Real OmniDocBench English-table subset (built from HF annotations)."
+
+input:
+  records_path: data/omnidocbench/records.json
+
+subsets:
+  hard_table_rule:
+    min_row_count: 20
+    min_col_count: 6
+    require_any_of:
+      - has_merged_cells
+      - has_nested_headers
+
+split:
+  seed: 1337
+  calibration_size: 5
+  eval_size: null  # take remainder of the eval universe
+
+output:
+  manifests_dir: data/splits/omnidocbench

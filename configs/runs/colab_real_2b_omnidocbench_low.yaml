@@ -1,0 +1,29 @@
+# Phase 2 single-pass run on the REAL InternVL2-2B adapter against the
+# REAL OmniDocBench English-table subset.
+#
+# Prereq: run `scripts/data/build_omnidocbench_fixture.py` once on the
+# same host so `data/omnidocbench/records.json` and the page images
+# exist. Then run `scripts/subset_extraction/build_phase1_manifests.py
+# --config configs/dataset/phase1_omnidocbench.yaml` to emit the splits
+# this run config consumes.
+run_id: colab_real_2b_omnidocbench_low_v1
+
+inputs:
+  split_name: calibration_split
+  manifest_path: data/splits/omnidocbench/calibration_split.json
+  records_path: data/omnidocbench/records.json
+  image_root: data
+
+model:
+  config_path: configs/models/internvl2_real.yaml
+  name: internvl2-2b
+
+budget:
+  config_path: configs/budgets/phase2.yaml
+  name: low
+
+prompt:
+  config_path: configs/prompts/table_parse_v1.yaml
+
+output:
+  dir: outputs/runs/colab_real_2b_omnidocbench_low_v1
