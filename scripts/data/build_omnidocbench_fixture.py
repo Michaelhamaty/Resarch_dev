@@ -38,6 +38,16 @@ ANNOTATION_CANDIDATES = (
     "annotation/OmniDocBench.json",
 )
 
+# OmniDocBench's annotations carry just the bare image filename. The
+# actual file on HF lives under one of these folders; we try them in
+# order and cache whichever works for the rest of the run.
+IMAGE_PREFIX_CANDIDATES = (
+    "images/",
+    "original_images/",
+    "OmniDocBench/images/",
+    "",
+)
+
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -59,6 +69,15 @@ def main(argv: list[str] | None = None) -> int:
             "Diagnostic mode: download annotations and print a structural "
             "summary of the first N entries, then exit. Use this when the "
             "selector finds 0 pages so we can see what changed upstream."
+        ),
+    )
+    parser.add_argument(
+        "--image-prefix", type=str, default=None,
+        help=(
+            "Override the in-repo image folder prefix (e.g. 'images/'). "
+            "By default the script auto-probes a few common folders. "
+            "Use this if every prefix candidate 404s and you've located "
+            "the real path via the HF dataset viewer."
         ),
     )
     args = parser.parse_args(argv)
@@ -116,10 +135,19 @@ def main(argv: list[str] | None = None) -> int:
     images_dir = args.out_dir / "images"
     images_dir.mkdir(parents=True, exist_ok=True)
 
+    # Cache the prefix that works so we only auto-probe once.
+    prefix_cache: list[str] = [args.image_prefix] if args.image_prefix is not None else []
+
     records: list[dict] = []
     ground_truth: dict[str, str] = {}
+    skipped: list[tuple[str, str]] = []
     for page in selected:
-        local_path = _download_image(hf_hub_download, page)
+        try:
+            local_path = _download_image(hf_hub_download, page, prefix_cache)
+        except RuntimeError as exc:
+            skipped.append((page.page_id, str(exc)))
+            print(f"  SKIP {page.page_id}: {exc}", file=sys.stderr)
+            continue
         image_ext = local_path.suffix.lower() or ".jpg"
         target = images_dir / f"{page.page_id}{image_ext}"
         shutil.copy2(local_path, target)
@@ -127,6 +155,18 @@ def main(argv: list[str] | None = None) -> int:
         records.append(_to_record(page, rel_path))
         ground_truth[page.page_id] = page.table_html
         print(f"  {page.page_id} <- {page.image_filename} -> {target}")
+
+    if not records:
+        print(
+            "\nEvery image download failed. Open the HF dataset viewer "
+            f"(https://huggingface.co/datasets/{REPO_ID}/tree/main) and find "
+            "which folder the page images live in, then re-run with "
+            "--image-prefix '<that_folder>/'.",
+            file=sys.stderr,
+        )
+        return 5
+    if skipped:
+        print(f"\nWARNING: skipped {len(skipped)} pages due to download errors")
 
     (args.out_dir / "records.json").write_text(
         json.dumps(records, indent=2), encoding="utf-8"
@@ -160,13 +200,41 @@ def _download_annotations(hf_hub_download, *, override: str | None):
     raise RuntimeError(msg)
 
 
-def _download_image(hf_hub_download, page) -> Path:
-    local = hf_hub_download(
-        repo_id=REPO_ID,
-        filename=page.image_filename,
-        repo_type=REPO_TYPE,
+def _download_image(hf_hub_download, page, prefix_cache: list[str]) -> Path:
+    """Download a page image, auto-probing known folder prefixes.
+
+    Tries the cached prefix first (cheap once we've found the right one),
+    then falls back to the candidate list. The first successful prefix
+    is appended to ``prefix_cache`` so subsequent calls hit the cache.
+    """
+
+    candidates: list[str] = []
+    for p in prefix_cache:
+        if p not in candidates:
+            candidates.append(p)
+    for p in IMAGE_PREFIX_CANDIDATES:
+        if p not in candidates:
+            candidates.append(p)
+
+    last_error: Exception | None = None
+    for prefix in candidates:
+        try:
+            local = hf_hub_download(
+                repo_id=REPO_ID,
+                filename=f"{prefix}{page.image_filename}",
+                repo_type=REPO_TYPE,
+            )
+            if prefix not in prefix_cache:
+                prefix_cache.append(prefix)
+            return Path(local)
+        except Exception as exc:  # pragma: no cover - depends on HF responses
+            last_error = exc
+            continue
+
+    raise RuntimeError(
+        f"all prefix candidates 404'd ({candidates}); "
+        f"last error: {last_error}"
     )
-    return Path(local)
 
 
 def _to_record(page, image_path: str) -> dict:
