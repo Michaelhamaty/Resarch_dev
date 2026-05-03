@@ -53,6 +53,14 @@ def main(argv: list[str] | None = None) -> int:
         "--annotation-path", type=str, default=None,
         help="Override the in-repo annotation file path if upstream renames it.",
     )
+    parser.add_argument(
+        "--inspect", type=int, default=0, metavar="N",
+        help=(
+            "Diagnostic mode: download annotations and print a structural "
+            "summary of the first N entries, then exit. Use this when the "
+            "selector finds 0 pages so we can see what changed upstream."
+        ),
+    )
     args = parser.parse_args(argv)
 
     try:
@@ -68,6 +76,7 @@ def main(argv: list[str] | None = None) -> int:
     # Lazy import so the unit tests do not need this module's deps.
     from adaptive_inference.dataset.omnidocbench import (
         SelectedPage,
+        describe_entry,
         select_english_table_pages,
     )
 
@@ -86,9 +95,21 @@ def main(argv: list[str] | None = None) -> int:
         return 3
     print(f"total annotation entries: {len(entries)}")
 
+    if args.inspect > 0:
+        print(f"\n--- inspecting first {args.inspect} entries ---\n")
+        for i, entry in enumerate(entries[: args.inspect]):
+            print(f"=== entry {i} ===")
+            print(json.dumps(describe_entry(entry), indent=2, ensure_ascii=False))
+            print()
+        return 0
+
     selected = select_english_table_pages(entries, limit=args.limit)
     if not selected:
-        print("No English table pages found in OmniDocBench annotations.", file=sys.stderr)
+        print(
+            "No English table pages found. Re-run with --inspect 2 to dump "
+            "the first two entries' structure and report back.",
+            file=sys.stderr,
+        )
         return 4
     print(f"selected {len(selected)} English-table pages")
 

@@ -170,3 +170,66 @@ def test_page_id_sanitized() -> None:
         limit=1,
     )
     assert pages[0].page_id == "file_name_"  # spaces and ! → _
+
+
+def test_finds_language_under_nested_page_attribute() -> None:
+    """Real OmniDocBench shape: language at page_info.page_attribute.language."""
+
+    entry = {
+        "page_info": {
+            "image_path": "images/x.jpg",
+            "page_attribute": {"language": "english"},
+        },
+        "layout_dets": [{"category_type": "table", "html": SIMPLE_TABLE}],
+    }
+    pages = select_english_table_pages([entry], limit=1)
+    assert len(pages) == 1
+    assert pages[0].language == "english"
+
+
+def test_recursive_language_fallback_for_unknown_path() -> None:
+    """If language sits at a path we don't know, the recursive walker still finds it."""
+
+    entry = {
+        "image_path": "images/x.jpg",
+        "weird": {"deeply": {"nested": {"language": "English"}}},
+        "layout_dets": [{"category_type": "table", "html": SIMPLE_TABLE}],
+    }
+    pages = select_english_table_pages([entry], limit=1)
+    assert len(pages) == 1
+    assert pages[0].language == "english"
+
+
+def test_accepts_eng_language_value() -> None:
+    entry = {
+        "page_info": {"image_path": "x.jpg", "language": "eng"},
+        "layout_dets": [{"category_type": "table", "html": SIMPLE_TABLE}],
+    }
+    pages = select_english_table_pages([entry], limit=1)
+    assert len(pages) == 1
+
+
+def test_accepts_table_body_category() -> None:
+    entry = {
+        "page_info": {"image_path": "x.jpg", "language": "english"},
+        "layout_dets": [{"category_type": "table_body", "html": SIMPLE_TABLE}],
+    }
+    pages = select_english_table_pages([entry], limit=1)
+    assert len(pages) == 1
+
+
+def test_describe_entry_truncates_long_strings() -> None:
+    from adaptive_inference.dataset.omnidocbench import describe_entry
+
+    entry = {
+        "long": "x" * 500,
+        "short": "ok",
+        "nested": {"layout_dets": [{"category_type": "table", "html": "y" * 200}]},
+    }
+    summary = describe_entry(entry, max_str=20)
+    assert summary["short"] == "ok"
+    assert len(summary["long"]) <= 20
+    # Nested list described as length + first element preview
+    nested = summary["nested"]["layout_dets"]
+    assert nested["_list_len"] == 1
+    assert nested["_first"]["category_type"] == "table"

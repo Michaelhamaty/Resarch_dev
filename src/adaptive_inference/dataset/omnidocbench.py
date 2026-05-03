@@ -34,12 +34,21 @@ class OmniDocBenchSchemaError(ValueError):
     """Raised when an annotation entry does not match an expected shape."""
 
 
-# Field paths we know about. Listed as alternatives because OmniDocBench's
-# JSON has gone through schema revisions; we accept either layout.
-_LANGUAGE_KEYS = (("page_info", "language"), ("page_attribute", "language"))
-_IMAGE_KEYS = (("page_info", "image_path"), ("image_path",))
-_TABLE_HTML_KEYS = ("html", "html_str", "table_html")
-_TABLE_CATEGORIES = frozenset({"table", "Table", "TABLE"})
+# Field paths we have seen in OmniDocBench releases. Tried in order;
+# the first hit wins. Anything not on this list still gets caught by
+# the recursive fallback in ``_find_language``.
+_LANGUAGE_KEYS = (
+    ("page_info", "page_attribute", "language"),  # current real release
+    ("page_info", "language"),                    # earlier flat layout
+    ("page_attribute", "language"),               # top-level alternative
+)
+_IMAGE_KEYS = (
+    ("page_info", "image_path"),
+    ("image_path",),
+)
+_TABLE_HTML_KEYS = ("html", "html_str", "table_html", "html_seq")
+_TABLE_CATEGORIES = frozenset({"table", "Table", "TABLE", "table_body"})
+_ENGLISH_VALUES = frozenset({"english", "en", "eng"})
 
 
 @dataclass(frozen=True)
@@ -86,10 +95,10 @@ def select_english_table_pages(
 
 
 def _try_select_page(entry: Mapping[str, Any]) -> SelectedPage | None:
-    language = _first_present(entry, _LANGUAGE_KEYS)
+    language = _find_language(entry)
     if language is None:
         return None
-    if str(language).strip().lower() not in {"english", "en"}:
+    if language not in _ENGLISH_VALUES:
         return None
 
     image_path = _first_present(entry, _IMAGE_KEYS)
@@ -144,6 +153,65 @@ def _first_present(
         if ok and cur is not None and cur != "":
             return cur
     return None
+
+
+def _find_language(entry: Mapping[str, Any]) -> str | None:
+    """Return the page language as a normalized lowercase string, or None.
+
+    First tries the known paths; if none match, falls back to a recursive
+    walk looking for any ``language`` key. The recursive fallback is what
+    makes the selector resilient to upstream schema renames.
+    """
+
+    val = _first_present(entry, _LANGUAGE_KEYS)
+    if val is None:
+        val = _walk_for_key(entry, "language")
+    if val is None:
+        return None
+    return str(val).strip().lower()
+
+
+def _walk_for_key(node: Any, target: str, depth: int = 0) -> Any | None:
+    """Depth-first search for ``target`` key. Bounded depth to avoid runaway."""
+
+    if depth > 8:
+        return None
+    if isinstance(node, Mapping):
+        if target in node and node[target] not in (None, ""):
+            return node[target]
+        for v in node.values():
+            found = _walk_for_key(v, target, depth + 1)
+            if found is not None:
+                return found
+    elif isinstance(node, list):
+        for v in node:
+            found = _walk_for_key(v, target, depth + 1)
+            if found is not None:
+                return found
+    return None
+
+
+def describe_entry(entry: Mapping[str, Any], *, max_str: int = 80) -> dict:
+    """Return a structure-only summary of one entry for diagnostics.
+
+    Strings are truncated; nested dicts keep their key shapes; lists report
+    length and the type of their first element. Used by the downloader's
+    ``--inspect`` mode so we can see real OmniDocBench shapes without
+    drowning the terminal in HTML.
+    """
+
+    return _describe(entry, max_str=max_str)
+
+
+def _describe(node: Any, *, max_str: int) -> Any:
+    if isinstance(node, Mapping):
+        return {k: _describe(v, max_str=max_str) for k, v in node.items()}
+    if isinstance(node, list):
+        first = _describe(node[0], max_str=max_str) if node else None
+        return {"_list_len": len(node), "_first": first}
+    if isinstance(node, str):
+        return node if len(node) <= max_str else node[: max_str - 1] + "…"
+    return node
 
 
 def _first_html(region: Mapping[str, Any]) -> str | None:
