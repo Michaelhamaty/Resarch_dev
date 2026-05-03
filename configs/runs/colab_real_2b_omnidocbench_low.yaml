@@ -23,7 +23,7 @@ budget:
   name: low
 
 prompt:
-  config_path: configs/prompts/table_parse_v1.yaml
+  config_path: configs/prompts/table_parse_v2.yaml
 
 output:
   dir: outputs/runs/colab_real_2b_omnidocbench_low_v1

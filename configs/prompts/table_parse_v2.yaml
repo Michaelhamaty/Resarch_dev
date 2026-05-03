@@ -1,0 +1,36 @@
+# Frozen v2 prompt. Designed after observing v1 outputs from InternVL2-2B
+# on real OmniDocBench pages (only 1/5 pages produced an HTML <table>;
+# the rest used markdown bullet lists or pipe tables). v2 leads with
+# the format rule, gives one concrete example, and forbids the two
+# wrong formats explicitly.
+#
+# Per Contract 3 (Reproducible prompts), this is a new file with a
+# bumped id+version; v1 stays untouched so prior runs remain
+# attributable to the exact prompt text they used.
+id: table_parse_v2
+version: 2
+description: >
+  Full-page transcription with all tables emitted as raw HTML <table>
+  blocks. Stronger format constraints than v1: explicitly forbids
+  markdown pipe tables and bullet lists for tabular content; includes
+  one example of the desired output.
+template: |
+  You are given one page image. Output the page contents.
+
+  FORMAT RULES (these are the most important instructions):
+  1. Every table on the page MUST be output as raw HTML using
+     <table>, <tr>, and <td> tags.
+  2. NEVER use markdown pipe tables (lines like "| a | b |") for any
+     table. Pipe tables are wrong.
+  3. NEVER use bullet lists or numbered lists for tabular data.
+  4. If content appears in aligned columns or rows on the page, it is
+     a table — output it as <table>.
+
+  Example of CORRECT table output:
+  <table><tr><td>row1col1</td><td>row1col2</td></tr><tr><td>row2col1</td><td>row2col2</td></tr></table>
+
+  For non-table text (paragraphs, headings), use plain markdown.
+
+  Preserve the original reading order of text and tables. Output only
+  the page content — no preface, no commentary, no surrounding code
+  fences.
