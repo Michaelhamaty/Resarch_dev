@@ -73,7 +73,7 @@ class InternVL2Adapter(InferenceAdapter):
         model_name: str,
         model_id: str,
         device: str | None = None,
-        dtype: str = "bfloat16",
+        dtype: str | None = None,
         max_new_tokens: int = 2048,
     ) -> None:
         # Heavy imports kept lazy so importing this module on a machine
@@ -87,7 +87,10 @@ class InternVL2Adapter(InferenceAdapter):
 
         self._torch = torch
         self.device = device or _auto_device(torch)
-        self.dtype = _resolve_dtype(torch, dtype)
+        # Auto-pick dtype: bf16 only on capable hardware (Ampere+, sm_80+
+        # for CUDA; Apple MPS supports fp16 most reliably). Without this
+        # check, T4/V100 GPUs silently corrupt or OOM on bf16 weights.
+        self.dtype = _resolve_dtype(torch, dtype or _auto_dtype(torch, self.device))
 
         self.tokenizer = AutoTokenizer.from_pretrained(
             model_id,
@@ -125,6 +128,10 @@ class InternVL2Adapter(InferenceAdapter):
 
         # InternVL2's chat() helper is the documented interface. We pass
         # do_sample=False for greedy/deterministic decoding.
+        # The question MUST contain an "<image>" token — InternVL2 uses it
+        # to splice visual embeddings into the text stream. Project prompts
+        # are intentionally model-agnostic, so we prepend it here.
+        question = _ensure_image_token(prompt.template)
         generation_config: dict[str, Any] = {
             "max_new_tokens": self.max_new_tokens,
             "do_sample": False,
@@ -133,7 +140,7 @@ class InternVL2Adapter(InferenceAdapter):
             response = self.model.chat(
                 tokenizer=self.tokenizer,
                 pixel_values=pixel_values,
-                question=prompt.template,
+                question=question,
                 generation_config=generation_config,
                 history=None,
                 return_history=False,
@@ -245,6 +252,30 @@ def _auto_device(torch: Any) -> str:
     if getattr(torch.backends, "mps", None) and torch.backends.mps.is_available():
         return "mps"
     return "cpu"
+
+
+def _auto_dtype(torch: Any, device: str) -> str:
+    """Pick the safest dtype for the chosen device.
+
+    bf16 is only safe on Ampere+ CUDA (sm_80+) and modern CPUs. On older
+    GPUs (T4 sm_75, V100 sm_70) bf16 silently underperforms or OOMs. MPS
+    supports fp16 reliably; bf16 is patchy. CPU stays fp32 to avoid
+    accidentally running a 2B model in slow-emulated bf16.
+    """
+
+    if device == "cuda":
+        if hasattr(torch.cuda, "is_bf16_supported") and torch.cuda.is_bf16_supported():
+            return "bfloat16"
+        return "float16"
+    if device == "mps":
+        return "float16"
+    return "float32"
+
+
+def _ensure_image_token(text: str) -> str:
+    """Guarantee the question passed to ``model.chat`` contains ``<image>``."""
+
+    return text if "<image>" in text else f"<image>\n{text}"
 
 
 def _resolve_dtype(torch: Any, name: str) -> Any:

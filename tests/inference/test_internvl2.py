@@ -203,9 +203,11 @@ def test_run_returns_well_formed_inference_result(
     assert result.runtime_ms >= 0.0
 
 
-def test_run_passes_prompt_template_text_to_model(
+def test_run_injects_image_token_into_prompt(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """InternVL2 requires <image> in the question to splice visual embeddings."""
+
     fakes = _install_fake_torch_stack(monkeypatch)
     from adaptive_inference.inference.internvl2 import InternVL2Adapter
 
@@ -214,8 +216,76 @@ def test_run_passes_prompt_template_text_to_model(
     )
     adapter.run(page_id="p", image=_img(), budget=BUDGET, prompt=PROMPT)
     _, kwargs = fakes.model_chat.call_args
-    assert kwargs["question"] == "parse this page"
+    assert "<image>" in kwargs["question"]
+    assert "parse this page" in kwargs["question"]
     assert kwargs["generation_config"]["do_sample"] is False
+
+
+def test_run_does_not_double_inject_image_token(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """If the prompt already contains <image>, do not add another one."""
+
+    fakes = _install_fake_torch_stack(monkeypatch)
+    from adaptive_inference.config.prompts import PromptTemplate
+    from adaptive_inference.inference.internvl2 import InternVL2Adapter
+
+    p = PromptTemplate(
+        id="p", version=1, description="d", template="<image>\nparse this"
+    )
+    adapter = InternVL2Adapter(
+        model_name="internvl2-2b", model_id="OpenGVLab/InternVL2-2B"
+    )
+    adapter.run(page_id="p", image=_img(), budget=BUDGET, prompt=p)
+    _, kwargs = fakes.model_chat.call_args
+    assert kwargs["question"].count("<image>") == 1
+
+
+def test_auto_dtype_falls_back_to_fp16_when_bf16_unsupported(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """T4/V100 (no bf16) must resolve to float16, not bfloat16."""
+
+    fakes = _install_fake_torch_stack(monkeypatch)
+    # Pretend CUDA is available but bf16 is not (T4-class GPU).
+    fakes.torch.cuda.is_available = lambda: True
+    fakes.torch.cuda.is_bf16_supported = lambda: False
+    from adaptive_inference.inference.internvl2 import InternVL2Adapter
+
+    adapter = InternVL2Adapter(
+        model_name="internvl2-2b", model_id="OpenGVLab/InternVL2-2B"
+    )
+    assert adapter.dtype is fakes.torch.float16
+
+
+def test_auto_dtype_uses_bf16_when_supported(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fakes = _install_fake_torch_stack(monkeypatch)
+    fakes.torch.cuda.is_available = lambda: True
+    fakes.torch.cuda.is_bf16_supported = lambda: True
+    from adaptive_inference.inference.internvl2 import InternVL2Adapter
+
+    adapter = InternVL2Adapter(
+        model_name="internvl2-2b", model_id="OpenGVLab/InternVL2-2B"
+    )
+    assert adapter.dtype is fakes.torch.bfloat16
+
+
+def test_explicit_dtype_overrides_auto(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fakes = _install_fake_torch_stack(monkeypatch)
+    fakes.torch.cuda.is_available = lambda: True
+    fakes.torch.cuda.is_bf16_supported = lambda: True
+    from adaptive_inference.inference.internvl2 import InternVL2Adapter
+
+    adapter = InternVL2Adapter(
+        model_name="internvl2-2b",
+        model_id="OpenGVLab/InternVL2-2B",
+        dtype="float16",
+    )
+    assert adapter.dtype is fakes.torch.float16
 
 
 def test_max_tiles_propagates_to_tile_count(
