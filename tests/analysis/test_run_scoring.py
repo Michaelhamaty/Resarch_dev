@@ -30,14 +30,28 @@ GOLD_2X2 = _table([["a", "b"], ["c", "d"]])
 GOLD_OTHER = _table([["x", "y"], ["z", "w"]])
 
 
-def _write_sidecar(run_dir: Path, page_id: str, raw_text: str) -> None:
-    raw_dir = run_dir / "raw"
-    pages_dir = run_dir / "pages"
+def _write_sidecar(
+    run_dir: Path,
+    page_id: str,
+    raw_text: str,
+    *,
+    subdir: str = "",
+) -> None:
+    """Write a Phase 2 (subdir="") or Phase 4 (subdir="final") sidecar pair.
+
+    raw_output_path is always relative to ``run_dir``, matching what both
+    output_writer.py and adaptive_writer.py actually emit.
+    """
+
+    base = run_dir / subdir if subdir else run_dir
+    raw_dir = base / "raw"
+    pages_dir = base / "pages"
     raw_dir.mkdir(parents=True, exist_ok=True)
     pages_dir.mkdir(parents=True, exist_ok=True)
 
-    raw_rel = f"raw/{page_id}.md"
-    (run_dir / raw_rel).write_text(raw_text, encoding="utf-8")
+    raw_path = raw_dir / f"{page_id}.md"
+    raw_rel = str(raw_path.relative_to(run_dir))
+    raw_path.write_text(raw_text, encoding="utf-8")
 
     sidecar = {
         "page_id": page_id,
@@ -166,6 +180,28 @@ def test_missing_run_dir_raises(tmp_path: Path) -> None:
     _write_gt(gt_path, {})
     with pytest.raises(FileNotFoundError):
         score_run(tmp_path / "nope", gt_path)
+
+
+def test_adaptive_layout_uses_final_pages(tmp_path: Path) -> None:
+    """Phase 4 adaptive runs put sidecars under final/pages/, not pages/."""
+
+    run_dir = tmp_path / "run"
+    _write_sidecar(run_dir, "page_a", GOLD_2X2, subdir="final")
+    _write_sidecar(run_dir, "page_b", "no html here", subdir="final")
+    # Drop a first_pass/ and reparse/ alongside to mimic the real layout;
+    # the scorer must ignore them and only score from final/.
+    _write_sidecar(run_dir, "page_a", "ignored", subdir="first_pass")
+    _write_sidecar(run_dir, "page_b", "also ignored", subdir="reparse")
+
+    gt_path = tmp_path / "gt.json"
+    _write_gt(gt_path, {"page_a": GOLD_2X2, "page_b": GOLD_2X2})
+
+    result = score_run(run_dir, gt_path)
+
+    assert result.pages_total == 2
+    by_id = {p.page_id: p for p in result.page_scores}
+    assert by_id["page_a"].cell_f1 == pytest.approx(1.0)
+    assert by_id["page_b"].pred_parse_error == "no_tables"
 
 
 def test_cli_smoke(tmp_path: Path) -> None:

@@ -1,0 +1,36 @@
+# Phase 4 adaptive run on the REAL InternVL2-2B adapter against the
+# REAL OmniDocBench English-table subset. Same 5 calibration pages as
+# `colab_real_2b_omnidocbench_low.yaml`, same prompt, paired low/high
+# budgets so the verifier-gated reparse path is exercised end-to-end.
+#
+# Budget values come from `configs/budgets/phase2.yaml` and are still
+# placeholders — Phase 5 calibration will refine them. The point of
+# this run is to surface verifier behaviour and reparse output on real
+# pages, not to claim a calibrated comparison.
+#
+# Prereqs (run once on the same host before this config):
+#   scripts/data/build_omnidocbench_fixture.py
+#   scripts/subset_extraction/build_phase1_manifests.py
+#       --config configs/dataset/phase1_omnidocbench.yaml
+run_id: colab_real_2b_omnidocbench_adaptive_v1
+
+inputs:
+  split_name: calibration_split
+  manifest_path: data/splits/omnidocbench/calibration_split.json
+  records_path: data/omnidocbench/records.json
+  image_root: data
+
+model:
+  config_path: configs/models/internvl2_real.yaml
+  name: internvl2-2b
+
+budget:
+  config_path: configs/budgets/phase2.yaml
+  low_name: low
+  high_name: high
+
+prompt:
+  config_path: configs/prompts/table_parse_v2.yaml
+
+output:
+  dir: outputs/runs/colab_real_2b_omnidocbench_adaptive_v1

@@ -60,11 +60,7 @@ def score_run(
     run_dir = Path(run_dir)
     ground_truth_path = Path(ground_truth_path)
 
-    pages_dir = run_dir / "pages"
-    if not pages_dir.is_dir():
-        raise FileNotFoundError(
-            f"run_dir has no pages/ subdirectory: {pages_dir}"
-        )
+    pages_dir = _resolve_pages_dir(run_dir)
 
     ground_truth = _load_ground_truth(ground_truth_path)
 
@@ -117,6 +113,26 @@ def score_run(
         pages_with_parse_error=pages_with_parse_error,
         output_json_path=out_json,
         output_markdown_path=out_md,
+    )
+
+
+def _resolve_pages_dir(run_dir: Path) -> Path:
+    """Return the per-page sidecar directory for either Phase 2 or Phase 4 layouts.
+
+    Phase 2 single-pass writes ``{run_dir}/pages/``. Phase 4 adaptive writes
+    ``{run_dir}/final/pages/`` (plus first_pass/ and reparse/, which we
+    deliberately skip — ``final/`` carries the chosen-pass copy that
+    represents the system's actual output for that page).
+    """
+
+    direct = run_dir / "pages"
+    if direct.is_dir():
+        return direct
+    final = run_dir / "final" / "pages"
+    if final.is_dir():
+        return final
+    raise FileNotFoundError(
+        f"run_dir has no pages/ or final/pages/ subdirectory: {run_dir}"
     )
 
 
