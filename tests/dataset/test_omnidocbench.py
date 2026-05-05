@@ -218,6 +218,66 @@ def test_accepts_table_body_category() -> None:
     assert len(pages) == 1
 
 
+def test_min_non_empty_cells_drops_thin_layout_table() -> None:
+    """A 2-cell label-strip table is filtered out at threshold 6."""
+
+    layout_strip = "<table><tr><td>x</td><td>y</td></tr></table>"
+    substantive = (
+        "<table>"
+        "<tr><td>a</td><td>b</td><td>c</td></tr>"
+        "<tr><td>d</td><td>e</td><td>f</td></tr>"
+        "</table>"
+    )
+    entries = [
+        _entry(image="images/strip.jpg", tables=[layout_strip]),
+        _entry(image="images/real.jpg", tables=[substantive]),
+    ]
+    pages = select_english_table_pages(entries, limit=5, min_non_empty_cells=6)
+    assert [p.image_filename for p in pages] == ["images/real.jpg"]
+
+
+def test_min_non_empty_cells_counts_only_filled_cells() -> None:
+    """A survey template (50% empty cells) is dropped at threshold 6."""
+
+    half_empty = (
+        "<table>"
+        "<tr><td>name</td><td>Bill</td><td></td><td></td></tr>"
+        "<tr><td>day</td><td>Teachers'</td><td></td><td></td></tr>"
+        "<tr><td>todo</td><td>flowers</td><td></td><td></td></tr>"
+        "</table>"
+    )
+    pages = select_english_table_pages(
+        [_entry(image="images/survey.jpg", tables=[half_empty])],
+        limit=5,
+        min_non_empty_cells=8,
+    )
+    # 6 filled cells, threshold 8 → dropped.
+    assert pages == []
+    # Same data at threshold 6 → kept.
+    pages = select_english_table_pages(
+        [_entry(image="images/survey.jpg", tables=[half_empty])],
+        limit=5,
+        min_non_empty_cells=6,
+    )
+    assert len(pages) == 1
+
+
+def test_min_non_empty_cells_zero_is_noop() -> None:
+    """Default 0 changes nothing — backward-compatible."""
+
+    pages_default = select_english_table_pages(
+        [_entry(image="images/a.jpg", tables=[SIMPLE_TABLE])],
+        limit=5,
+    )
+    pages_zero = select_english_table_pages(
+        [_entry(image="images/a.jpg", tables=[SIMPLE_TABLE])],
+        limit=5,
+        min_non_empty_cells=0,
+    )
+    assert len(pages_default) == 1
+    assert len(pages_zero) == 1
+
+
 def test_describe_entry_truncates_long_strings() -> None:
     from adaptive_inference.dataset.omnidocbench import describe_entry
 

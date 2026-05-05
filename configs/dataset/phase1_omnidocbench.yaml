@@ -23,7 +23,12 @@ subsets:
 
 split:
   seed: 1337
-  calibration_size: 5
+  # Bumped from 5 to 20 after the initial 5-page slice was confounded by
+  # OmniDocBench tables-as-layout entries (slide label strips, half-empty
+  # survey templates). With min_non_empty_cells filtering on the downloader
+  # (recommend --min-non-empty-cells 8), 20 substantive pages give us a
+  # meaningful macro number for Phase 2/4 comparison.
+  calibration_size: 20
   eval_size: null  # take remainder of the eval universe
 
 output:

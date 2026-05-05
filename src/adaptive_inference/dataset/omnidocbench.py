@@ -69,15 +69,28 @@ def select_english_table_pages(
     annotations: Iterable[Mapping[str, Any]],
     *,
     limit: int,
+    min_non_empty_cells: int = 0,
 ) -> list[SelectedPage]:
     """Return up to ``limit`` English pages that have at least one HTML table.
 
     The order of returned pages is deterministic: sorted by ``image_filename``.
     Within ``limit``, ties never matter because there are no duplicate filenames.
+
+    ``min_non_empty_cells`` drops pages whose combined gold tables have fewer
+    than that many cells with non-whitespace text content. Use this to filter
+    out OmniDocBench entries where ``<table>`` is used as a layout primitive
+    (slide label strips, fillable survey templates) rather than to encode
+    tabular data — those pages confound cell-F1 because the model can capture
+    the content correctly without emitting ``<table>``. Default ``0`` is a
+    no-op (every page with at least one table is kept).
     """
 
     if limit <= 0:
         raise ValueError(f"limit must be positive, got {limit}")
+    if min_non_empty_cells < 0:
+        raise ValueError(
+            f"min_non_empty_cells must be non-negative, got {min_non_empty_cells}"
+        )
 
     candidates: list[SelectedPage] = []
     for entry in annotations:
@@ -87,8 +100,11 @@ def select_english_table_pages(
             # Skip pages whose schema we cannot parse, but never silently
             # discard recognised English-table pages.
             continue
-        if page is not None:
-            candidates.append(page)
+        if page is None:
+            continue
+        if min_non_empty_cells > 0 and _count_non_empty_cells(page.table_html) < min_non_empty_cells:
+            continue
+        candidates.append(page)
 
     candidates.sort(key=lambda p: p.image_filename)
     return candidates[:limit]
@@ -229,10 +245,33 @@ def _first_html(region: Mapping[str, Any]) -> str | None:
 
 _TR_RE = re.compile(r"<tr\b[^>]*>", re.IGNORECASE)
 _TD_RE = re.compile(r"<t[dh]\b[^>]*>", re.IGNORECASE)
+_CELL_WITH_BODY_RE = re.compile(
+    r"<(t[dh])\b[^>]*>(.*?)</\1\s*>",
+    re.IGNORECASE | re.DOTALL,
+)
+_TAG_RE = re.compile(r"<[^>]+>")
 _SPAN_GT1_RE = re.compile(r"\b(?:rowspan|colspan)\s*=\s*['\"]?(\d+)", re.IGNORECASE)
 _THEAD_RE = re.compile(r"<thead\b[^>]*>", re.IGNORECASE)
 _TR_END_RE = re.compile(r"</tr\s*>", re.IGNORECASE)
 _TH_RE = re.compile(r"<th\b[^>]*>", re.IGNORECASE)
+
+
+def _count_non_empty_cells(html: str) -> int:
+    """Count ``<td>``/``<th>`` cells whose body has non-whitespace text.
+
+    Strips inline tags (``<br/>``, ``<b>``, ...) before checking. Used by
+    ``select_english_table_pages`` to filter out tables-as-layout pages
+    where most cells are empty placeholders. Cheap regex matches the rest
+    of this module's parsing approach — full HTML parsing happens later
+    in the verifier and scorer.
+    """
+
+    count = 0
+    for match in _CELL_WITH_BODY_RE.finditer(html):
+        body = _TAG_RE.sub("", match.group(2))
+        if body.strip():
+            count += 1
+    return count
 
 
 def _table_metadata(html: str) -> tuple[int, int, bool, bool]:

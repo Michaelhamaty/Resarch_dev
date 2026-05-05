@@ -72,6 +72,15 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument(
+        "--min-non-empty-cells", type=int, default=0,
+        help=(
+            "Drop pages whose combined gold tables have fewer than N cells "
+            "with non-whitespace content. Filters out OmniDocBench entries "
+            "where <table> is used as a slide/worksheet layout primitive "
+            "rather than tabular data. Default 0 keeps every page."
+        ),
+    )
+    parser.add_argument(
         "--image-prefix", type=str, default=None,
         help=(
             "Override the in-repo image folder prefix (e.g. 'images/'). "
@@ -122,7 +131,11 @@ def main(argv: list[str] | None = None) -> int:
             print()
         return 0
 
-    selected = select_english_table_pages(entries, limit=args.limit)
+    selected = select_english_table_pages(
+        entries,
+        limit=args.limit,
+        min_non_empty_cells=args.min_non_empty_cells,
+    )
     if not selected:
         print(
             "No English table pages found. Re-run with --inspect 2 to dump "
