@@ -1,0 +1,51 @@
+# Real-data Phase 5 calibration on the OmniDocBench English-table
+# calibration split. Mirrors `phase5.yaml`'s shape but points at:
+#   - real records / split (built by the OmniDocBench downloader),
+#   - the real InternVL2-2B adapter,
+#   - the v2 prompt used by the rest of the real-data runs.
+#
+# 8B remains stub (configs/models/internvl2_real.yaml has 8B as
+# adapter_kind: stub). The B_fix_8B budget written to
+# frozen_budgets.json will therefore carry adapter_kind: stub; Phase 6
+# is expected to skip the 8B baseline via --allow-stubbed-8b.
+#
+# Compute estimate (20 calibration pages):
+#   adaptive sweep: 2 × 2 = 4 pairs, ~1.55 calls/page → ~125 real 2B
+#   fixed_2b sweep: 4 pts × 20 pages              →  ~80 real 2B
+#   fixed_8b sweep: 3 pts × 20 pages              →   60 stub (instant)
+#   total: ~205 real 2B inferences (~10–15 min on Colab Pro)
+run_id: phase5_calibration_omnidocbench_v1
+
+split:
+  manifest_path: data/splits/omnidocbench/calibration_split.json
+  records_path: data/omnidocbench/records.json
+  image_root: data
+
+prompt_config_path: configs/prompts/table_parse_v2.yaml
+model_config_path: configs/models/internvl2_real.yaml
+
+candidates:
+  # Centred on values already validated end-to-end on real data
+  # (low=4, high=12 in the Phase 4 adaptive run).
+  low_max_tiles:        [4, 6]
+  high_max_tiles:       [10, 12]
+  # Tight band around the expected matched cost (~10 tiles/page).
+  fixed_2b_max_tiles:   [6, 8, 10, 12]
+  # 8B is stub-only; values are placeholders, kept narrow to keep the
+  # stub sweep cheap and the artifact small.
+  fixed_8b_max_tiles:   [8, 10, 12]
+
+# Phase 4 adaptive on this same 20-page split measured ~10.6 tiles/page.
+# Target 10.0 so a fixed_2b at max_tiles=10 is a natural in-band match.
+target_adaptive_cost_tiles: 10.0
+matched_cost_tolerance: 0.10
+
+models:
+  adaptive: internvl2-2b
+  fixed_2b: internvl2-2b
+  fixed_8b: internvl2-8b
+
+output:
+  sweep_root: outputs/calibration/sweep_omnidocbench
+  sweep_summaries_path: outputs/calibration/sweep_omnidocbench_summaries.jsonl
+  frozen_budgets_path: configs/calibration/frozen_budgets.json
