@@ -102,7 +102,6 @@ class InternVL2Adapter(InferenceAdapter):
                 model_id,
                 torch_dtype=self.dtype,
                 trust_remote_code=True,
-                attn_implementation="sdpa",
             )
             .to(self.device)
             .eval()
