@@ -1,57 +1,57 @@
 {
   "budgets": {
     "B_fix_2B": {
-      "adapter_kind": "stub",
-      "max_tiles": 6,
+      "adapter_kind": "internvl2",
+      "max_tiles": 10,
       "model_name": "internvl2-2b",
       "name": "B_fix_2B"
     },
     "B_fix_8B": {
       "adapter_kind": "stub",
-      "max_tiles": 6,
+      "max_tiles": 10,
       "model_name": "internvl2-8b",
       "name": "B_fix_8B"
     },
     "B_high": {
-      "adapter_kind": "stub",
-      "max_tiles": 8,
+      "adapter_kind": "internvl2",
+      "max_tiles": 10,
       "model_name": "internvl2-2b",
       "name": "B_high"
     },
     "B_low": {
-      "adapter_kind": "stub",
-      "max_tiles": 6,
+      "adapter_kind": "internvl2",
+      "max_tiles": 4,
       "model_name": "internvl2-2b",
       "name": "B_low"
     }
   },
-  "generated_at": "2026-05-02T02:44:31.798957+00:00",
+  "generated_at": "2026-05-17T11:17:41.954404+00:00",
   "pinning": {
-    "calibration_config_path": "configs/calibration/phase5.yaml",
-    "calibration_split_manifest": "data/splits/calibration_split.json",
-    "calibration_split_sha256": "d4d9993e4e0029fa6a831346ca0466d2454ab95b06d0864a266c7e71ec3e3206",
+    "calibration_config_path": "configs/calibration/phase5_omnidocbench.yaml",
+    "calibration_split_manifest": "data/splits/omnidocbench/calibration_split.json",
+    "calibration_split_sha256": "a37c4b14884961820f6069d8789851460e863b2f55af7b088b1d34017c79ecab",
     "cost_unit": "max_tiles",
     "matched_cost_tolerance": 0.1
   },
-  "run_id": "phase5_calibration_v1",
+  "run_id": "phase5_calibration_omnidocbench_v1",
   "schema_version": 1,
   "selection": {
     "adaptive": {
-      "high_max_tiles": 8,
-      "low_max_tiles": 6,
-      "measured_cost_tiles": 6.0,
-      "target_cost_tiles": 6.0
+      "high_max_tiles": 10,
+      "low_max_tiles": 4,
+      "measured_cost_tiles": 9.5,
+      "target_cost_tiles": 10.0
     },
     "fixed_2b": {
-      "max_tiles": 6,
-      "measured_cost_tiles": 6.0,
-      "target_cost_tiles": 6.0,
+      "max_tiles": 10,
+      "measured_cost_tiles": 10.0,
+      "target_cost_tiles": 9.5,
       "within_tolerance": true
     },
     "fixed_8b": {
-      "max_tiles": 6,
-      "measured_cost_tiles": 6.0,
-      "target_cost_tiles": 6.0,
+      "max_tiles": 10,
+      "measured_cost_tiles": 10.0,
+      "target_cost_tiles": 9.5,
       "within_tolerance": true
     }
   }
