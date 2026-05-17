@@ -1,0 +1,48 @@
+# Phase 6 — Real-data five-system run on OmniDocBench.
+#
+# Runs every system (adaptive 2B, fixed-2B low, fixed-2B matched, random
+# 2B seeds 0/1/2, fixed-8B matched) at the budgets frozen by Phase 5,
+# against the same 20-page OmniDocBench English-table calibration split
+# that Phase 5 used. Budget values come straight from the frozen
+# artifact; no budget numbers live in this YAML.
+#
+# Methodological note: calibration and evaluation use the same 20-page
+# split. This is a research-MVP shortcut, not a clean setup — there is
+# no held-out real-data split yet. The honest read-out at the end of
+# Phase 6 should call this out and treat the matched-cost numbers as
+# in-sample.
+#
+# 8B is stubbed (B_fix_8B.adapter_kind == "stub"). Pass
+# `--allow-stubbed-8b` to the CLI to actually execute the stub system
+# (recorded in the manifest with adapter_kind=stub so nobody confuses
+# it for a real 8B number).
+run_set_id: phase6_omnidocbench_v1
+
+# Phase 5 frozen artifact. Phase 6 treats this as read-only.
+frozen_budgets_path: configs/calibration/frozen_budgets.json
+
+inputs:
+  split_name: calibration_split
+  manifest_path: data/splits/omnidocbench/calibration_split.json
+  records_path: data/omnidocbench/records.json
+  image_root: data
+
+model:
+  # Real-adapter registry. The frozen artifact carries adapter_kind +
+  # model_name per budget; this YAML supplies model_id + notes. The
+  # runner asserts the two agree at load time so drift fails loudly.
+  config_path: configs/models/internvl2_real.yaml
+
+prompt:
+  # Must match the prompt frozen in Phase 5 (table_parse v2). Phase 5
+  # uses this same template via configs/calibration/phase5_omnidocbench.yaml.
+  config_path: configs/prompts/table_parse_v2.yaml
+
+output:
+  root: outputs/runs/phase6_omnidocbench
+
+random_escalation:
+  # Three seeds give a variance estimate over the random baseline. The
+  # per-page reparse probability is DERIVED from the frozen artifact
+  # (p = (measured_cost - low) / high), not configured here.
+  seeds: [0, 1, 2]
