@@ -23,7 +23,7 @@ from adaptive_inference.analysis.loaders import (
 from adaptive_inference.calibration.artifact import load_frozen_budgets
 
 
-def _audit(fix):
+def _audit(fix, *, splits_are_identical_acknowledged: bool = False):
     manifest = load_phase6_manifest(fix.phase6_manifest_path)
     systems = load_loaded_systems(manifest, repo_root=fix.root)
     frozen = load_frozen_budgets(fix.frozen_budgets_path)
@@ -35,6 +35,7 @@ def _audit(fix):
         calibration_split_path=fix.calibration_split_path,
         held_out_split_path=fix.held_out_split_path,
         frozen_budgets_path=fix.frozen_budgets_path,
+        splits_are_identical_acknowledged=splits_are_identical_acknowledged,
     )
 
 
@@ -68,6 +69,25 @@ def test_splits_disjoint_fails_on_overlap(phase7_fixture):
 
     report = _audit(phase7_fixture)
     assert _by_name(report, "phase1_splits_disjoint").status == STATUS_FAIL
+
+
+def test_splits_identical_acknowledged_downgrades_to_warn(phase7_fixture):
+    # Overwrite the calibration split to match held_out exactly.
+    cal_path = phase7_fixture.calibration_split_path
+    cal_raw = json.loads(cal_path.read_text())
+    cal_raw["page_ids"] = list(phase7_fixture.held_out_page_ids)
+    cal_path.write_text(json.dumps(cal_raw, indent=2, sort_keys=True))
+
+    # Without the acknowledgment, the audit still fails.
+    report = _audit(phase7_fixture, splits_are_identical_acknowledged=False)
+    assert _by_name(report, "phase1_splits_disjoint").status == STATUS_FAIL
+
+    # With the acknowledgment, it becomes a warn — and the report no longer fails.
+    report = _audit(phase7_fixture, splits_are_identical_acknowledged=True)
+    chk = _by_name(report, "phase1_splits_disjoint")
+    assert chk.status == STATUS_WARN
+    assert "MVP shortcut" in chk.detail
+    assert not report.any_failed
 
 
 def test_held_out_sha_mismatch_fails(phase7_fixture):

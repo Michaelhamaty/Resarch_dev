@@ -22,7 +22,7 @@ from ..calibration.summary import (
     summarize_adaptive_log,
     summarize_single_pass_log,
 )
-from .loaders import LoadedSystem
+from .loaders import LoadedSystem, ScoringSummary
 
 
 ADAPTIVE_RUNNERS = ("adaptive", "adaptive_random")
@@ -50,22 +50,64 @@ class SystemResult:
     seed: int | None
     random_probability: float | None
     note: str | None
+    macro_cell_f1: float | None = None
+    macro_text_similarity: float | None = None
+    pages_with_parse_error: int | None = None
+    pages_with_gold: int | None = None
 
 
-def summarize_system(system: LoadedSystem) -> SystemResult:
-    """Build a ``SystemResult`` from a loaded manifest entry + records."""
+def summarize_system(
+    system: LoadedSystem, *, scoring: ScoringSummary | None = None
+) -> SystemResult:
+    """Build a ``SystemResult`` from a loaded manifest entry + records.
+
+    When ``scoring`` is provided (loaded from a per-system page_scores.json),
+    its macro accuracy numbers are merged into the result. When absent,
+    the accuracy fields remain ``None`` so the stub-only Phase 7 path
+    keeps working unchanged.
+    """
 
     entry = system.entry
     if entry.status != "ok":
-        return _placeholder_result(system)
+        return _attach_scoring(_placeholder_result(system), scoring)
 
     if entry.runner in ADAPTIVE_RUNNERS:
-        return _summarize_adaptive(system)
+        return _attach_scoring(_summarize_adaptive(system), scoring)
     if entry.runner == SINGLE_PASS_RUNNER:
-        return _summarize_single_pass(system)
+        return _attach_scoring(_summarize_single_pass(system), scoring)
     raise ValueError(
         f"{entry.system_id}: unknown runner {entry.runner!r} "
         f"(expected one of {SINGLE_PASS_RUNNER!r}, {ADAPTIVE_RUNNERS!r})"
+    )
+
+
+def _attach_scoring(
+    result: SystemResult, scoring: ScoringSummary | None
+) -> SystemResult:
+    if scoring is None:
+        return result
+    return SystemResult(
+        system_id=result.system_id,
+        family=result.family,
+        runner=result.runner,
+        status=result.status,
+        pages_processed=result.pages_processed,
+        sample_size=result.sample_size,
+        mean_runtime_ms=result.mean_runtime_ms,
+        p95_runtime_ms=result.p95_runtime_ms,
+        mean_output_tokens=result.mean_output_tokens,
+        cost_tiles=result.cost_tiles,
+        reparse_rate=result.reparse_rate,
+        reparse_count=result.reparse_count,
+        verifier_failure_codes=result.verifier_failure_codes,
+        predicted_table_count_hist=result.predicted_table_count_hist,
+        seed=result.seed,
+        random_probability=result.random_probability,
+        note=result.note,
+        macro_cell_f1=scoring.macro_cell_f1,
+        macro_text_similarity=scoring.macro_text_similarity,
+        pages_with_parse_error=scoring.pages_with_parse_error,
+        pages_with_gold=scoring.pages_with_gold,
     )
 
 

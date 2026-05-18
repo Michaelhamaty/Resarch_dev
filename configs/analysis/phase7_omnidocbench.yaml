@@ -1,0 +1,24 @@
+# Phase 7 — Final analysis on the real-data OmniDocBench Phase 6 run.
+#
+# Sibling to phase7.yaml (which targets the stub Phase 6 manifest). This
+# file points at the real OmniDocBench five-system run produced by
+# scripts/main_runs/run_phase6.py against the 20-page calibration split,
+# and ingests the per-system cell-F1 / text-similarity scores written by
+# scripts/analysis/score_run.py (see notebook Section 8, cell 18).
+#
+# MVP shortcut: there is no held-out real-data split yet, so the
+# calibration_split is reused as the held_out_split. The audit's
+# `phase1_splits_disjoint` check would normally fail on this; the
+# `splits_are_identical_acknowledged: true` flag downgrades it to a warn
+# with an explanation. The limitation is surfaced honestly in
+# docs/project_status_final.md and is the next research step.
+inputs:
+  phase6_manifest_path: outputs/runs/phase6_omnidocbench/manifest.json
+  frozen_budgets_path: configs/calibration/frozen_budgets.json
+  held_out_split_path: data/splits/omnidocbench/calibration_split.json
+  calibration_split_path: data/splits/omnidocbench/calibration_split.json
+  scoring_summaries_root: outputs/analysis
+  splits_are_identical_acknowledged: true
+
+output:
+  root: outputs/analysis

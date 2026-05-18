@@ -23,7 +23,12 @@ from .audit import to_dict as audit_to_dict
 from .config import Phase7Config
 from .cost import build_cost_summary
 from .cost import to_dict as cost_to_dict
-from .loaders import load_loaded_systems, load_phase6_manifest, load_split_page_ids
+from .loaders import (
+    load_loaded_systems,
+    load_phase6_manifest,
+    load_scoring_summary,
+    load_split_page_ids,
+)
 from .qualitative import build_page_rows, iter_jsonl_rows
 from .reparse import build_reparse_summary
 from .reparse import to_dict as reparse_to_dict
@@ -55,8 +60,22 @@ def run_phase7(cfg: Phase7Config, *, repo_root: Path | None = None) -> Phase7Res
     systems = load_loaded_systems(manifest, repo_root=root)
     held_out_ids = load_split_page_ids(cfg.held_out_split_path)
 
-    # Per-system results
-    results = tuple(summarize_system(s) for s in systems)
+    # Per-system results. When a scoring_summaries_root is configured,
+    # merge in per-system macro accuracy numbers from the standalone
+    # scorer's page_scores.json. Missing files are silently skipped so
+    # partial scoring (e.g. some systems still pending) remains valid.
+    scoring_root = cfg.scoring_summaries_root
+    results = tuple(
+        summarize_system(
+            s,
+            scoring=(
+                load_scoring_summary(s.entry.system_id, scoring_root)
+                if scoring_root is not None
+                else None
+            ),
+        )
+        for s in systems
+    )
     cost = build_cost_summary(systems, frozen)
     reparse = build_reparse_summary(systems)
     pages = build_page_rows(systems, held_out_ids)
@@ -69,6 +88,7 @@ def run_phase7(cfg: Phase7Config, *, repo_root: Path | None = None) -> Phase7Res
         calibration_split_path=cfg.calibration_split_path,
         held_out_split_path=cfg.held_out_split_path,
         frozen_budgets_path=cfg.frozen_budgets_path,
+        splits_are_identical_acknowledged=cfg.splits_are_identical_acknowledged,
     )
 
     out_dir = cfg.output_root / manifest.header.run_set_id

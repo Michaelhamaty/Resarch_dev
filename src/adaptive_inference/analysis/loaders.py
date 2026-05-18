@@ -200,6 +200,67 @@ def load_loaded_systems(
     return tuple(out)
 
 
+@dataclass(frozen=True)
+class ScoringSummary:
+    """Macro accuracy numbers loaded from a per-system page_scores.json.
+
+    Source: ``scripts/analysis/score_run.py`` writes one of these per
+    system to ``<scoring_summaries_root>/score_phase6_<system_id>/page_scores.json``.
+    Phase 7 surfaces them in the results table when the file is present;
+    when it is absent the per-system fields stay ``None``.
+    """
+
+    system_id: str
+    page_scores_path: Path
+    macro_cell_f1: float
+    macro_text_similarity: float
+    pages_total: int
+    pages_with_gold: int
+    pages_with_parse_error: int
+
+
+SCORING_DIR_PREFIX = "score_phase6_"
+PAGE_SCORES_FILENAME = "page_scores.json"
+
+
+def load_scoring_summary(
+    system_id: str, scoring_summaries_root: str | Path
+) -> ScoringSummary | None:
+    """Return the per-system scoring summary, or ``None`` if absent.
+
+    Raises ``ValueError`` if the file exists but its schema is wrong —
+    silent skips would mask a real upstream change.
+    """
+
+    path = (
+        Path(scoring_summaries_root)
+        / f"{SCORING_DIR_PREFIX}{system_id}"
+        / PAGE_SCORES_FILENAME
+    )
+    if not path.exists():
+        return None
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(raw, dict) or "summary" not in raw:
+        raise ValueError(
+            f"{path}: expected {{'summary': {{...}}}} payload, got {type(raw).__name__}"
+        )
+    summary = raw["summary"]
+    if not isinstance(summary, dict):
+        raise ValueError(f"{path}: 'summary' must be a JSON object")
+    try:
+        return ScoringSummary(
+            system_id=system_id,
+            page_scores_path=path,
+            macro_cell_f1=float(summary["macro_cell_f1"]),
+            macro_text_similarity=float(summary["macro_text_similarity"]),
+            pages_total=int(summary["pages_total"]),
+            pages_with_gold=int(summary["pages_with_gold"]),
+            pages_with_parse_error=int(summary["pages_with_parse_error"]),
+        )
+    except KeyError as exc:
+        raise ValueError(f"{path}: scoring summary missing key {exc.args[0]!r}") from exc
+
+
 def load_split_page_ids(path: str | Path) -> tuple[str, ...]:
     """Extract the ordered ``page_ids`` array from a Phase 1 split manifest."""
 

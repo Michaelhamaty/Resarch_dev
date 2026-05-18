@@ -24,6 +24,8 @@ class Phase7Config:
     held_out_split_path: Path
     calibration_split_path: Path
     output_root: Path
+    scoring_summaries_root: Path | None = None
+    splits_are_identical_acknowledged: bool = False
 
 
 def load_phase7_config(path: str | Path) -> Phase7Config:
@@ -34,12 +36,18 @@ def load_phase7_config(path: str | Path) -> Phase7Config:
     inputs = _require(raw, "inputs", path)
     output = _require(raw, "output", path)
 
+    scoring_root_raw = inputs.get("scoring_summaries_root") if isinstance(inputs, dict) else None
+    scoring_root = Path(scoring_root_raw) if scoring_root_raw else None
+    splits_identical = bool(inputs.get("splits_are_identical_acknowledged", False)) if isinstance(inputs, dict) else False
+
     return Phase7Config(
         phase6_manifest_path=Path(_require(inputs, "phase6_manifest_path", path)),
         frozen_budgets_path=Path(_require(inputs, "frozen_budgets_path", path)),
         held_out_split_path=Path(_require(inputs, "held_out_split_path", path)),
         calibration_split_path=Path(_require(inputs, "calibration_split_path", path)),
         output_root=Path(_require(output, "root", path)),
+        scoring_summaries_root=scoring_root,
+        splits_are_identical_acknowledged=splits_identical,
     )
 
 
