@@ -1,0 +1,39 @@
+# FinTabNet dataset config — scale-up v2.
+#
+# Mirrors `configs/dataset/phase1_omnidocbench.yaml` so the rest of the
+# pipeline (freeze, manifests, runner, scorer) is dataset-agnostic.
+# Consumes the records.json emitted by
+# `scripts/data/build_fintabnet_fixture.py`.
+pinning:
+  dataset_name: fintabnet
+  snapshot_version: v1-2026-scaleup-subset
+  eval_code_commit: TBD
+  source: data/fintabnet/records.json
+  notes: "FinTabNet (bsmock25/FinTabNet.c HF mirror) test-split subset."
+
+input:
+  records_path: data/fintabnet/records.json
+
+subsets:
+  hard_table_rule:
+    min_row_count: 20
+    min_col_count: 6
+    require_any_of:
+      - has_merged_cells
+      - has_nested_headers
+
+split:
+  seed: 1337
+  calibration_size: 50
+  eval_size: 150
+
+output:
+  manifests_dir: data/splits/fintabnet
+
+# Used by scripts/data/build_fintabnet_fixture.py — the HF repo to pull from
+# and which FinTabNet split(s) to keep. "test" gives clean held-out GT.
+source:
+  hf_repo_id: bsmock25/FinTabNet.c
+  hf_repo_type: dataset
+  splits: ["test"]
+  render_dpi: 144

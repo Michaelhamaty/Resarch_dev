@@ -29,6 +29,9 @@ import re
 from dataclasses import dataclass
 from typing import Any, Iterable, Mapping
 
+from .html_metadata import count_non_empty_cells as _count_non_empty_cells
+from .html_metadata import table_metadata as _table_metadata
+
 
 class OmniDocBenchSchemaError(ValueError):
     """Raised when an annotation entry does not match an expected shape."""
@@ -236,91 +239,6 @@ def _first_html(region: Mapping[str, Any]) -> str | None:
         if isinstance(val, str) and val.strip():
             return val
     return None
-
-
-# --------------------------------------------------------------------------- #
-# Lightweight HTML metadata derivation                                        #
-# --------------------------------------------------------------------------- #
-
-
-_TR_RE = re.compile(r"<tr\b[^>]*>", re.IGNORECASE)
-_TD_RE = re.compile(r"<t[dh]\b[^>]*>", re.IGNORECASE)
-_CELL_WITH_BODY_RE = re.compile(
-    r"<(t[dh])\b[^>]*>(.*?)</\1\s*>",
-    re.IGNORECASE | re.DOTALL,
-)
-_TAG_RE = re.compile(r"<[^>]+>")
-_SPAN_GT1_RE = re.compile(r"\b(?:rowspan|colspan)\s*=\s*['\"]?(\d+)", re.IGNORECASE)
-_THEAD_RE = re.compile(r"<thead\b[^>]*>", re.IGNORECASE)
-_TR_END_RE = re.compile(r"</tr\s*>", re.IGNORECASE)
-_TH_RE = re.compile(r"<th\b[^>]*>", re.IGNORECASE)
-
-
-def _count_non_empty_cells(html: str) -> int:
-    """Count ``<td>``/``<th>`` cells whose body has non-whitespace text.
-
-    Strips inline tags (``<br/>``, ``<b>``, ...) before checking. Used by
-    ``select_english_table_pages`` to filter out tables-as-layout pages
-    where most cells are empty placeholders. Cheap regex matches the rest
-    of this module's parsing approach — full HTML parsing happens later
-    in the verifier and scorer.
-    """
-
-    count = 0
-    for match in _CELL_WITH_BODY_RE.finditer(html):
-        body = _TAG_RE.sub("", match.group(2))
-        if body.strip():
-            count += 1
-    return count
-
-
-def _table_metadata(html: str) -> tuple[int, int, bool, bool]:
-    """Return ``(row_count, col_count, has_merged_cells, has_nested_headers)``.
-
-    Approximate counts are fine — the only consumer is ``HardTableRule``,
-    which uses them as monotone signals. We deliberately use cheap regex
-    rather than parsing the HTML; full parsing happens later in the
-    verifier and scorer paths where correctness matters more than speed.
-    """
-
-    rows = _TR_RE.findall(html)
-    row_count = len(rows)
-
-    # Approximate column count: max number of cells in any single row.
-    col_count = 0
-    for row_segment in _split_rows(html):
-        cells = len(_TD_RE.findall(row_segment))
-        if cells > col_count:
-            col_count = cells
-
-    has_merged = any(int(m.group(1)) > 1 for m in _SPAN_GT1_RE.finditer(html))
-    has_nested = _has_nested_headers(html)
-    return row_count, col_count, has_merged, has_nested
-
-
-def _split_rows(html: str) -> list[str]:
-    """Return raw <tr>...</tr> substrings (cheap, regex-based)."""
-
-    rows: list[str] = []
-    cursor = 0
-    for opener in _TR_RE.finditer(html):
-        end_match = _TR_END_RE.search(html, opener.end())
-        if not end_match:
-            break
-        rows.append(html[opener.end() : end_match.start()])
-        cursor = end_match.end()
-    return rows
-
-
-def _has_nested_headers(html: str) -> bool:
-    """Heuristic: more than one <thead>, OR a <tr> containing >1 <th>."""
-
-    if len(_THEAD_RE.findall(html)) > 1:
-        return True
-    for row_segment in _split_rows(html):
-        if len(_TH_RE.findall(row_segment)) > 1:
-            return True
-    return False
 
 
 def _page_id_from_filename(image_path: str) -> str:
