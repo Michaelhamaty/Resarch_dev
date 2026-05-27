@@ -1,37 +1,32 @@
 """Download a FinTabNet subset and emit project-shaped fixture files.
 
-Target HF repo (default): ``bsmock25/FinTabNet.c`` — Brandon Smock's
-cleaned FinTabNet variant used in TATR. See ``configs/dataset/fintabnet.yaml``.
+Target HF repo (default): ``apoidea/fintabnet-html`` — scale-up v2 LOCKED
+source. CDLA-Permissive 1.0 by inheritance from the original FinTabNet
+(Zheng et al. 2021). See ``configs/dataset/fintabnet.yaml`` and
+``docs/runbooks/fintabnet_provenance.md``.
 
-Two-phase usage on the VM:
+The apoidea mirror ships parquet shards under ``en/{train,validation}-*``
+with two columns: ``image`` (struct of ``{bytes, path}``) and
+``html_table`` (raw HTML string). Use ``--parquet-glob``:
 
-1. **Discovery**:
+    python scripts/data/build_fintabnet_fixture.py \\
+        --parquet-glob 'en/validation-*.parquet' \\
+        --splits validation \\
+        --limit 250
 
-       python scripts/data/build_fintabnet_fixture.py --list-files
+Writes:
+    - ``data/fintabnet/images/<page_id>.png`` — page images
+    - ``data/fintabnet/records.json`` — list of ``PageRecord`` dicts
+    - ``data/fintabnet/ground_truth.json`` — ``{page_id: html_str}``
+    - ``data/fintabnet/manifest.jsonl`` — one line per page
 
-   Prints every file in the HF repo. Use the output to identify the
-   annotation JSONL path and the image (or PDF) folder prefix.
+Legacy token-shape paths (``--annotations-jsonl`` / ``--images-prefix``
+/ ``--pdfs-prefix``) remain supported for PubTabNet-token mirrors.
 
-2. **Build** (once paths are known):
-
-       python scripts/data/build_fintabnet_fixture.py \
-           --annotations-jsonl FinTabNet.c_PDF_Annotations_JSON.jsonl \
-           --images-prefix images/ \
-           --limit 250
-
-   Writes:
-   - ``data/fintabnet/images/<page_id>.png`` — page images.
-   - ``data/fintabnet/records.json`` — list of ``PageRecord`` dicts.
-   - ``data/fintabnet/ground_truth.json`` — ``{page_id: html_str}``.
-   - ``data/fintabnet/manifest.jsonl`` — one line per page with full
-     metadata (row_count, col_count, has_merged_cells, image_path).
-
-The selection logic itself is in
-``adaptive_inference.dataset.fintabnet`` and is unit-tested with no
-network access. This script is the thin I/O wrapper.
-
-For PDF-shipped variants, pass ``--pdfs-prefix pdf/`` and the script
-will render each referenced PDF page to PNG via PyMuPDF.
+The selection logic lives in
+``adaptive_inference.dataset.fintabnet_html`` (HTML rows) and
+``adaptive_inference.dataset.fintabnet`` (token streams); both are
+unit-testable without network. This script is the thin I/O wrapper.
 """
 
 from __future__ import annotations
@@ -44,7 +39,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 
-DEFAULT_REPO_ID = "bsmock25/FinTabNet.c"
+DEFAULT_REPO_ID = "apoidea/fintabnet-html"
 DEFAULT_REPO_TYPE = "dataset"
 
 
@@ -69,10 +64,23 @@ def main(argv: list[str] | None = None) -> int:
         help="Alternative to --images-prefix: render PDFs at --dpi via PyMuPDF.",
     )
     parser.add_argument("--dpi", type=int, default=144, help="PDF render DPI.")
+    parser.add_argument(
+        "--parquet-glob", default=None,
+        help=(
+            "Repo-relative glob for HTML-shape parquet shards "
+            "(e.g. 'en/validation-*.parquet'). Triggers the apoidea/"
+            "fintabnet-html ingest path; mutually exclusive with "
+            "--annotations-jsonl."
+        ),
+    )
     parser.add_argument("--limit", type=int, default=250)
     parser.add_argument(
-        "--splits", nargs="+", default=["test"],
-        help="FinTabNet splits to include (default: test).",
+        "--splits", nargs="+", default=["validation"],
+        help=(
+            "Splits to include. For --parquet-glob this matches the "
+            "parquet folder name (validation/train). For "
+            "--annotations-jsonl this matches the entry's 'split' field."
+        ),
     )
     parser.add_argument(
         "--min-non-empty-cells", type=int, default=4,
@@ -98,9 +106,22 @@ def main(argv: list[str] | None = None) -> int:
             print(f)
         return 0
 
+    if args.parquet_glob and args.annotations_jsonl:
+        print(
+            "Pass only one of --parquet-glob or --annotations-jsonl.",
+            file=sys.stderr,
+        )
+        return 2
+
+    if args.parquet_glob:
+        return _run_parquet_mode(args, hf_hub_download_fn=hf_hub_download,
+                                 hf_api_fn=HfApi)
+
     if not args.annotations_jsonl:
         print(
-            "--annotations-jsonl is required (run with --list-files first to discover).",
+            "Pass --parquet-glob (apoidea HTML mirror) or --annotations-jsonl "
+            "(legacy token-shape mirror). Run with --list-files first to "
+            "discover repo paths.",
             file=sys.stderr,
         )
         return 2
@@ -310,6 +331,157 @@ def _describe(node: Any, max_str: int = 120) -> Any:
     if isinstance(node, str):
         return node if len(node) <= max_str else node[: max_str - 1] + "…"
     return node
+
+
+def _run_parquet_mode(args, *, hf_hub_download_fn, hf_api_fn) -> int:
+    """Apoidea/fintabnet-html parquet ingest.
+
+    Resolves ``args.parquet_glob`` against the repo file list, downloads
+    matching shards via ``hf_hub_download``, streams each row through
+    the HTML-shape selector, writes embedded PNG bytes to disk, and
+    emits the same ``records.json`` / ``ground_truth.json`` /
+    ``manifest.jsonl`` triad as the legacy path.
+    """
+
+    import fnmatch
+
+    try:
+        import pyarrow.parquet as pq
+    except ImportError:
+        print(
+            "Install pyarrow for parquet ingest:  uv pip install pyarrow",
+            file=sys.stderr,
+        )
+        return 2
+
+    # Lazy import so unit tests don't need pyarrow.
+    from adaptive_inference.dataset.fintabnet_html import (
+        HtmlRow,
+        select_html_pages,
+    )
+
+    api = hf_api_fn()
+    all_files = api.list_repo_files(
+        repo_id=args.repo_id, repo_type=args.repo_type
+    )
+    shard_paths = sorted(fnmatch.filter(all_files, args.parquet_glob))
+    if not shard_paths:
+        print(
+            f"No parquet shards matched glob {args.parquet_glob!r} in "
+            f"{args.repo_id!r}. Run --list-files to verify.",
+            file=sys.stderr,
+        )
+        return 4
+    print(f"matched {len(shard_paths)} parquet shard(s):")
+    for sp in shard_paths:
+        print(f"  {sp}")
+
+    def _row_stream():
+        for shard in shard_paths:
+            local = Path(
+                hf_hub_download_fn(
+                    repo_id=args.repo_id,
+                    filename=shard,
+                    repo_type=args.repo_type,
+                )
+            )
+            split = _split_name_from_shard_path(shard)
+            print(f"  reading {shard} (split={split})")
+            pf = pq.ParquetFile(local)
+            for batch in pf.iter_batches(batch_size=128):
+                cols = {n: batch.column(n) for n in batch.schema.names}
+                for i in range(batch.num_rows):
+                    image_cell = cols["image"][i].as_py()
+                    image_bytes = image_cell.get("bytes") if isinstance(image_cell, dict) else None
+                    if not isinstance(image_bytes, (bytes, bytearray)):
+                        continue
+                    html_val = cols["html_table"][i].as_py()
+                    if not isinstance(html_val, str):
+                        continue
+                    yield HtmlRow(
+                        html_table=html_val,
+                        image_bytes=bytes(image_bytes),
+                        split=split,
+                    )
+
+    if args.inspect > 0:
+        for i, row in zip(range(args.inspect), _row_stream()):
+            print(f"=== row {i} (split={row.split}) ===")
+            print(f"image_bytes: {len(row.image_bytes)} bytes")
+            html_preview = row.html_table[:300].replace("\n", " ")
+            print(f"html_table[:300]: {html_preview!r}")
+        return 0
+
+    # Materialize rows so we can iterate twice: once for selection, once
+    # for image-bytes lookup. For 250-page caps this is fine in memory.
+    rows = list(_row_stream())
+    print(f"streamed {len(rows)} candidate rows from parquet shards")
+
+    selected = select_html_pages(
+        rows,
+        limit=args.limit,
+        splits=set(args.splits),
+        min_non_empty_cells=args.min_non_empty_cells,
+    )
+    if not selected:
+        print(
+            "No pages selected. Check --splits and --min-non-empty-cells.",
+            file=sys.stderr,
+        )
+        return 4
+    print(f"selected {len(selected)} FinTabNet pages")
+
+    # Build a content-hash → image_bytes map so we can write the right
+    # PNG for each SelectedPage. The selector hashes html_table for the
+    # page_id, so look up by html_table.
+    from adaptive_inference.dataset.fintabnet_html import _page_id_from_html
+    image_bytes_by_id: dict[str, bytes] = {}
+    for row in rows:
+        image_bytes_by_id.setdefault(
+            _page_id_from_html(row.html_table), row.image_bytes
+        )
+
+    images_dir = args.out_dir / "images"
+    images_dir.mkdir(parents=True, exist_ok=True)
+
+    records: list[dict] = []
+    ground_truth: dict[str, str] = {}
+    manifest_lines: list[str] = []
+
+    for page in selected:
+        img_bytes = image_bytes_by_id.get(page.page_id)
+        if img_bytes is None:
+            print(f"  SKIP {page.page_id}: no image bytes", file=sys.stderr)
+            continue
+        target = images_dir / f"{page.page_id}.png"
+        target.write_bytes(img_bytes)
+        rel_path = target.relative_to(args.out_dir.parent).as_posix()
+        records.append(_to_record(page, rel_path))
+        ground_truth[page.page_id] = page.table_html
+        manifest_lines.append(json.dumps(_to_manifest_row(page, rel_path)))
+        print(f"  {page.page_id} <- {len(img_bytes)} bytes")
+
+    (args.out_dir / "records.json").write_text(
+        json.dumps(records, indent=2), encoding="utf-8"
+    )
+    (args.out_dir / "ground_truth.json").write_text(
+        json.dumps(ground_truth, indent=2), encoding="utf-8"
+    )
+    (args.out_dir / "manifest.jsonl").write_text(
+        "\n".join(manifest_lines) + "\n", encoding="utf-8"
+    )
+    print(f"\nwrote {len(records)} records to {args.out_dir / 'records.json'}")
+    print(f"wrote {len(ground_truth)} GT entries to {args.out_dir / 'ground_truth.json'}")
+    print(f"wrote {len(manifest_lines)} manifest rows to {args.out_dir / 'manifest.jsonl'}")
+    return 0
+
+
+def _split_name_from_shard_path(shard_path: str) -> str:
+    """Infer the split label from a parquet path like 'en/validation-00000-of-00003.parquet'."""
+
+    stem = shard_path.rsplit("/", 1)[-1]
+    # e.g. "validation-00000-of-00003.parquet" → "validation"
+    return stem.split("-", 1)[0]
 
 
 if __name__ == "__main__":

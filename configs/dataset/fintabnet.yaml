@@ -9,7 +9,7 @@ pinning:
   snapshot_version: v1-2026-scaleup-subset
   eval_code_commit: TBD
   source: data/fintabnet/records.json
-  notes: "FinTabNet (bsmock25/FinTabNet.c HF mirror) test-split subset."
+  notes: "FinTabNet (apoidea/fintabnet-html HF mirror, English subset; CDLA-Permissive 1.0 by inheritance from Zheng et al. 2021)."
 
 input:
   records_path: data/fintabnet/records.json
@@ -33,7 +33,10 @@ output:
 # Used by scripts/data/build_fintabnet_fixture.py — the HF repo to pull from
 # and which FinTabNet split(s) to keep. "test" gives clean held-out GT.
 source:
-  hf_repo_id: bsmock25/FinTabNet.c
+  hf_repo_id: apoidea/fintabnet-html
   hf_repo_type: dataset
-  splits: ["test"]
+  # apoidea/fintabnet-html ships parquet shards under en/{train,validation}-*.
+  # No "test" split exists; "validation" is the held-out role.
+  parquet_glob: "en/validation-*.parquet"
+  splits: ["validation"]
   render_dpi: 144

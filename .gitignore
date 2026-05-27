@@ -31,6 +31,9 @@ outputs/
 data/omnidocbench/
 data/splits/omnidocbench/
 
+# FinTabNet download (built by scripts/data/build_fintabnet_fixture.py)
+data/fintabnet/
+
 # OS
 .DS_Store
 

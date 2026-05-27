@@ -9,6 +9,8 @@ dependencies = [
     "lxml>=5",
     "scipy>=1.10",
     "apted>=1.0.3",
+    "huggingface-hub>=1.16.4",
+    "pyarrow>=15",
 ]
 
 [project.optional-dependencies]
