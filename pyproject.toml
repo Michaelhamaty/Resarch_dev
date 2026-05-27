@@ -18,6 +18,22 @@ dev = [
     "pytest>=8",
     "ruff>=0.6",
 ]
+# Heavy ML stack — only needed on the GPU VM that actually runs
+# adapter inference. Local development and unit tests do NOT need
+# these (the InternVL2Adapter imports torch/transformers lazily).
+# On the Deep Learning VM image (deeplearning-platform-release /
+# pytorch-latest-gpu), these are typically preinstalled into the
+# system Python; pinning them here lets `uv sync --extra gpu`
+# create a reproducible venv on any L4-class machine.
+gpu = [
+    "torch>=2.1",
+    "transformers>=4.40",
+    "torchvision>=0.16",
+    "accelerate>=0.30",
+    "timm>=0.9",
+    "sentencepiece>=0.2",
+    "einops>=0.7",
+]
 
 [build-system]
 requires = ["hatchling"]

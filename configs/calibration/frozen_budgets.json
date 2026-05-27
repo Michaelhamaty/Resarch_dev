@@ -7,7 +7,7 @@
       "name": "B_fix_2B"
     },
     "B_fix_8B": {
-      "adapter_kind": "stub",
+      "adapter_kind": "internvl2",
       "max_tiles": 10,
       "model_name": "internvl2-8b",
       "name": "B_fix_8B"

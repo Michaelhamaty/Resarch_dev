@@ -5,14 +5,19 @@
 # nothing; the heavy stack is only loaded when `build_adapter` actually
 # constructs the InternVL2Adapter.
 #
-# 2B is wired to the real adapter. 8B is still stubbed — flip it once
-# 2B is verified end-to-end on real data.
+# Both 2B and 8B are wired to the real InternVL2Adapter for scale-up v2.
+# Device and dtype are auto-resolved by InternVL2Adapter (cuda + bf16 on
+# L4/Ampere+, fp16 on MPS, fp32 on CPU). The plan's "device: cuda:0 /
+# dtype: float16" hint is satisfied by auto-detect picking bf16 on L4
+# (Ampere sm_89), which is at least as numerically stable as fp16.
 models:
   internvl2-2b:
     adapter_kind: internvl2
     model_id: OpenGVLab/InternVL2-2B
-    notes: "Small model baseline; real HF adapter."
+    notes: "Small-model baseline; real HF adapter."
   internvl2-8b:
-    adapter_kind: stub
+    adapter_kind: internvl2
     model_id: OpenGVLab/InternVL2-8B
-    notes: "Upper-bound matched-cost baseline; still stubbed pending real 8B adapter."
+    notes: >
+      Matched-cost upper-bound baseline; real HF adapter. Smoke-gated by
+      scripts/scaleup/smoke_8b_one_page.py per scaleup_v2_plan Stage 2.

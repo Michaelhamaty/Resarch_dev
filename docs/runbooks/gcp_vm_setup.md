@@ -135,12 +135,15 @@ git clone https://github.com/Michaelhamaty/Resarch_dev.git
 cd Resarch_dev
 git checkout scaleup/v2
 
-# Sync Python deps (creates .venv, installs from uv.lock)
-uv sync --extra dev
+# Sync Python deps (creates .venv, installs from uv.lock; includes
+# the GPU stack: torch, transformers, torchvision, accelerate, timm,
+# sentencepiece, einops — needed by InternVL2Adapter).
+uv sync --extra dev --extra gpu
 
 # Tests should pass before any GPU work
 uv run pytest -q
-# Expected: "360 passed"
+# Expected: "380 passed" (360 from MVP/Stages 4-8 + 20 from Stage-2
+# smoke pure-logic tests added during pre-staging).
 ```
 
 When `git clone` prompts for a password, paste a GitHub PAT (Settings → Developer settings → Personal access tokens; scope `repo` is sufficient).
@@ -248,7 +251,57 @@ gcloud compute instances start scaleup-v2
 - [ ] `uv run hf whoami` prints your HF username.
 - [ ] tmux detach/reattach cycle verified.
 
-When every box is checked, proceed to plan Stage 2 (8B smoke test).
+When every box is checked, proceed to Step 12 (Stage 2 — 8B smoke).
+
+---
+
+## Step 12 — Stage 2: InternVL2-8B smoke test (½-day hard cap, gate G2)
+
+This is the plan's binding ½-day gate. If 8B does not pass all four
+checks by end of Day 1 morning, fall back to "stub 8B, drop gap-closure
+framing" per `docs/specs/scaleup_v2_plan.md` Stage 2.
+
+```bash
+# Inside the VM SSH session
+cd ~/Resarch_dev
+
+# First model download: InternVL2-8B is ~15 GB. HF cache lives under
+# ~/.cache/huggingface and persists across VM stops.
+tmux new -s smoke
+
+# The smoke script handles everything: load 8B, run one OmniDocBench
+# calibration page through it twice, measure peak VRAM, check
+# tokenizer parity vs 2B, sanity-check <table> in output.
+uv run python scripts/scaleup/smoke_8b_one_page.py
+
+# Ctrl+B d to detach; tmux attach -t smoke to reattach.
+```
+
+Expected runtime on L4: ~2-4 min for the initial HF download of 8B
+weights, then ~30-60 s per inference run (two runs), plus the 2B
+tokenizer download (~30 s). Total ~5-8 min.
+
+**On PASS (exit 0):** The script prints a 4-line PASS summary ending
+with `RESULT: ALL PASS — gate G2 satisfied. Proceed to Stage 6.` The
+JSONL artifact at `outputs/scaleup_v2/smoke/smoke_8b_one_page.jsonl`
+records peak VRAM, runtimes, and the first 500 chars of `raw_text`.
+Commit the artifact (it's small).
+
+**On FAIL (exit 1):** The summary lists which of the four checks failed
+and prints `RESULT: FAIL — invoke plan Stage 2 fallback`. Re-read the
+plan's Stage 2 fallback path, paste the failure summary back, and we'll
+decide together before continuing. Typical failure modes:
+- VRAM > 22 GB: 8B + max_tiles=10 doesn't fit on L4. Retry with
+  `--max-tiles 8` to see if a smaller tile count fits; if not,
+  invoke fallback.
+- Tokenizer mismatch: 8B's `<image>` token id differs from 2B's. Rare
+  but possible if upstream renamed the model card. Invoke fallback.
+- Non-deterministic output: greedy decoding produced different bytes
+  across two runs. Likely indicates `do_sample` was overridden
+  somewhere. Investigate before fallback.
+- No `<table>` tag: 8B answered something other than HTML. May
+  indicate prompt-template incompatibility; try a different
+  calibration page via `--page-id <id>` before falling back.
 
 ---
 
