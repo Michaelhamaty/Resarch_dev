@@ -45,6 +45,12 @@ from .adaptive_logger import (
 )
 from .adaptive_writer import write_final_artifacts, write_pass_artifacts
 from .pages import load_pages_for_manifest
+from .resume import (
+    build_manifest,
+    pending_pages,
+    read_completed_page_ids,
+    write_manifest,
+)
 
 
 FIRST_PASS = "first_pass"
@@ -60,19 +66,64 @@ class AdaptiveRunSummary:
     log_path: Path
 
 
-def run_adaptive(cfg: AdaptiveRunConfig) -> AdaptiveRunSummary:
-    """Run every page in ``cfg.manifest_path`` through the adaptive pipeline."""
+def run_adaptive(
+    cfg: AdaptiveRunConfig,
+    *,
+    resume: bool = False,
+) -> AdaptiveRunSummary:
+    """Run every page in ``cfg.manifest_path`` through the adaptive pipeline.
+
+    When ``resume`` is False (default, preserves Phase 4 behavior), the
+    run.log.jsonl is truncated and every page is re-processed.
+
+    When ``resume`` is True, a manifest is written (or, if one already
+    exists with matching identity, re-used; see ``resume.write_manifest``),
+    pages whose ``page_id`` already appears in run.log.jsonl are skipped,
+    and the orchestrator processes only the pending subset, appending to
+    the existing log. This is the durability path for long sweeps.
+    """
 
     cfg.output_dir.mkdir(parents=True, exist_ok=True)
-    # Idempotent re-run: clear the log so line count == pages processed.
-    reset_adaptive_log(cfg.output_dir)
-
     adapter = build_adapter(cfg.model_cfg)
     loaded_pages = load_pages_for_manifest(
         manifest_path=cfg.manifest_path,
         records_path=cfg.records_path,
         image_root=cfg.image_root,
     )
+
+    all_page_ids = [lp.record.page_id for lp in loaded_pages]
+    manifest = build_manifest(
+        run_id=cfg.run_id,
+        system_id=cfg.run_id,
+        dataset_id=cfg.split_name,
+        page_ids=all_page_ids,
+        config_payload={
+            "model_name": cfg.model_cfg.name,
+            "model_adapter_kind": cfg.model_cfg.adapter_kind,
+            "budget_low": {"name": cfg.budget_low.name, "max_tiles": cfg.budget_low.max_tiles},
+            "budget_high": {"name": cfg.budget_high.name, "max_tiles": cfg.budget_high.max_tiles},
+            "prompt_id": cfg.prompt.id,
+            "manifest_path": str(cfg.manifest_path),
+            "records_path": str(cfg.records_path),
+        },
+    )
+
+    if resume:
+        # Idempotent: write_manifest is a no-op if existing matches, raises on drift.
+        write_manifest(cfg.output_dir, manifest)
+        completed = read_completed_page_ids(cfg.output_dir)
+        pending_ids = set(pending_pages(all_page_ids, completed))
+        loaded_pages = [lp for lp in loaded_pages if lp.record.page_id in pending_ids]
+    else:
+        # Idempotent re-run: clear the log so line count == pages processed.
+        reset_adaptive_log(cfg.output_dir)
+        # Overwrite any stale manifest by removing it before write_manifest
+        # (which would otherwise refuse to clobber). Safe because we just
+        # truncated the log, so there is no partial-run state to protect.
+        manifest_path = cfg.output_dir / "manifest.json"
+        if manifest_path.exists():
+            manifest_path.unlink()
+        write_manifest(cfg.output_dir, manifest)
 
     reparse_count = 0
     log_path: Path | None = None
@@ -174,6 +225,8 @@ def run_adaptive(cfg: AdaptiveRunConfig) -> AdaptiveRunSummary:
     return AdaptiveRunSummary(
         run_id=cfg.run_id,
         output_dir=cfg.output_dir,
+        # Pages processed THIS invocation. On a fresh (non-resume) run this
+        # equals len(all_page_ids); on a resume it equals the pending subset.
         pages_processed=len(loaded_pages),
         reparse_count=reparse_count,
         log_path=log_path,

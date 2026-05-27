@@ -5,11 +5,18 @@ Reuses the Phase 2 filename (``run.log.jsonl``) with an extended schema
 ``verifier_*``, split runtime/token fields, artifact paths) sit alongside
 the base identity fields. Any downstream reader must tolerate unknown
 keys, per Phase 2's contract.
+
+Durability contract (scaleup/v2, Stage 3): each ``append_adaptive_page_log``
+call flushes and ``fsync``s the file before returning, so that a kill -9
+or OOM after the function returns cannot lose the last record. This is
+what makes ``--resume`` semantically safe: any page that appears in the
+log on disk has fully completed; missing pages are pending.
 """
 
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -84,6 +91,8 @@ def append_adaptive_page_log(entry: AdaptivePageLog, output_dir: str | Path) -> 
     line = json.dumps(record, sort_keys=True)
     with log_path.open("a", encoding="utf-8") as f:
         f.write(line + "\n")
+        f.flush()
+        os.fsync(f.fileno())
     return log_path
 
 

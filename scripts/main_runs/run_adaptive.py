@@ -24,10 +24,19 @@ def main() -> None:
         required=True,
         help="Path to an adaptive run YAML (see configs/runs/smoke_adaptive.yaml).",
     )
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help=(
+            "Resume an interrupted run: keep existing run.log.jsonl, skip "
+            "pages already logged, append the rest. Without this flag, the "
+            "log is truncated and every page is re-processed (Phase 4 default)."
+        ),
+    )
     args = parser.parse_args()
 
     cfg = load_adaptive_run_config(args.config)
-    summary = run_adaptive(cfg)
+    summary = run_adaptive(cfg, resume=args.resume)
 
     print(f"run_id          : {summary.run_id}")
     print(
