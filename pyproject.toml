@@ -20,6 +20,9 @@ dependencies = [
 dev = [
     "pytest>=8",
     "ruff>=0.6",
+    # Stage 9 paper figures (scripts/scaleup/make_figures.py). Generated
+    # locally on the laptop, never on the GPU VM, so it lives in dev.
+    "matplotlib>=3.7",
 ]
 # Heavy ML stack — only needed on the GPU VM that actually runs
 # adapter inference. Local development and unit tests do NOT need
