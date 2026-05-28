@@ -1,0 +1,58 @@
+{
+  "budgets": {
+    "B_fix_2B": {
+      "adapter_kind": "internvl2",
+      "max_tiles": 10,
+      "model_name": "internvl2-2b",
+      "name": "B_fix_2B"
+    },
+    "B_fix_8B": {
+      "adapter_kind": "internvl2",
+      "max_tiles": 10,
+      "model_name": "internvl2-8b",
+      "name": "B_fix_8B"
+    },
+    "B_high": {
+      "adapter_kind": "internvl2",
+      "max_tiles": 16,
+      "model_name": "internvl2-2b",
+      "name": "B_high"
+    },
+    "B_low": {
+      "adapter_kind": "internvl2",
+      "max_tiles": 6,
+      "model_name": "internvl2-2b",
+      "name": "B_low"
+    }
+  },
+  "generated_at": "2026-05-28T22:21:23.999763+00:00",
+  "pinning": {
+    "calibration_config_path": "configs/calibration/scaleup_v2_fintabnet.yaml",
+    "calibration_split_manifest": "data/splits/scaleup_v2/fintabnet/calibration.json",
+    "calibration_split_sha256": "b2f9b96455c3f969d414138ebc148c31f38631e4502acf67c91a71461334e6fe",
+    "cost_unit": "max_tiles",
+    "matched_cost_tolerance": 0.1
+  },
+  "run_id": "scaleup_v2_calibration_fintabnet_v1_recovered",
+  "schema_version": 1,
+  "selection": {
+    "adaptive": {
+      "high_max_tiles": 16,
+      "low_max_tiles": 6,
+      "measured_cost_tiles": 10.16,
+      "target_cost_tiles": 10.0
+    },
+    "fixed_2b": {
+      "max_tiles": 10,
+      "measured_cost_tiles": 10.0,
+      "target_cost_tiles": 10.16,
+      "within_tolerance": true
+    },
+    "fixed_8b": {
+      "max_tiles": 10,
+      "measured_cost_tiles": 10.0,
+      "target_cost_tiles": 10.16,
+      "within_tolerance": true
+    }
+  }
+}
