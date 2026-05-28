@@ -1,0 +1,67 @@
+# Scale-up v2 Stage 7 main sweep — top-level experiment config.
+#
+# Plan reference: docs/specs/scaleup_v2_plan.md Stage 7.
+# Consumed by: scripts/scaleup/run_sweep.py (not yet written; lands
+# in a follow-up pre-stage). The driver will iterate the `datasets`
+# block and, for each entry, invoke the existing Phase 6 main-runs
+# codepath with --resume against that dataset's held_out split.
+#
+# What this config does NOT contain:
+#   * Per-system budget numbers. Those are read straight from the
+#     per-dataset frozen Stage-6 artifacts so calibration and
+#     evaluation never drift.
+#   * System identity. The 7 systems per dataset (fixed_2b_low,
+#     fixed_2b_matched, fixed_8b_matched, adaptive_2b,
+#     random_2b_seed{0,1,2}) are determined by the runner from the
+#     frozen budgets + random_escalation.seeds.
+#
+# Plan-mandated scope (binding):
+#   * Two datasets only (no PubTabNet, no third dataset).
+#   * Models internvl2-2b and internvl2-8b only (both real adapters
+#     post-Stage 2 smoke gate; see configs/models/internvl2_real.yaml).
+#   * Policy axis = {fixed_low, fixed_matched, adaptive}; random
+#     control on adaptive only, three seeds.
+#   * Held-out evaluation; calibration split is NOT touched here.
+run_set_id: scaleup_v2_main_sweep
+
+# Per-dataset inputs + per-dataset frozen budgets. Each entry runs
+# the full 7-system battery on its held_out split (150 pages for
+# FinTabNet, 90 pages for OmniDocBench per the asymmetric-n decision
+# in docs/runbooks/scaleup_v2_split_decisions.md).
+datasets:
+  omnidocbench:
+    split_manifest_path: data/splits/scaleup_v2/omnidocbench/held_out.json
+    records_path: data/omnidocbench/records.json
+    image_root: data
+    frozen_budgets_path: configs/calibration/frozen_budgets_v2_omnidocbench.json
+  fintabnet:
+    split_manifest_path: data/splits/scaleup_v2/fintabnet/held_out.json
+    records_path: data/fintabnet/records.json
+    image_root: data
+    frozen_budgets_path: configs/calibration/frozen_budgets_v2_fintabnet.json
+
+model:
+  # Real-adapter registry. The frozen artifacts carry adapter_kind +
+  # model_name per budget; this YAML supplies model_id + notes. The
+  # runner asserts the two agree at load time so drift fails loudly.
+  config_path: configs/models/internvl2_real.yaml
+
+prompt:
+  # Must match the prompt frozen during Stage 6 calibration (v2 in
+  # both per-dataset calibration configs). Reproducible-prompts
+  # contract: do not edit table_parse_v2.yaml after this freezes.
+  config_path: configs/prompts/table_parse_v2.yaml
+
+output:
+  # Sweep driver writes per-dataset subdirs:
+  #   outputs/scaleup_v2/<dataset>/<system_id>/{first_pass,reparse,final,run.log.jsonl,manifest.json}
+  # Resumability (Stage 3) protects against mid-run crashes; do not
+  # delete this tree between resume attempts.
+  root: outputs/scaleup_v2
+
+random_escalation:
+  # Three seeds give Stage 9 a variance estimate over the random
+  # baseline. Per-page reparse probability is DERIVED from each
+  # dataset's frozen artifact (p = (measured_cost - low) / high),
+  # not set here.
+  seeds: [0, 1, 2]

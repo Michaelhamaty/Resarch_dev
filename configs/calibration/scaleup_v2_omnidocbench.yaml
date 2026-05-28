@@ -1,0 +1,66 @@
+# Scale-up v2 Stage 6 calibration — OmniDocBench side.
+#
+# Plan reference: docs/specs/scaleup_v2_plan.md Stage 6.
+# Companion: configs/calibration/scaleup_v2_fintabnet.yaml (run after
+# this finishes so both per-dataset frozen artifacts exist before
+# Stage 7).
+#
+# The existing scripts/calibration/run_calibration.py is reused
+# unchanged (one --config flag, one calibration run). Per-dataset
+# configs match the established phase5_omnidocbench.yaml pattern; the
+# plan's singular "scaleup_v2.yaml" name is realized as two per-
+# dataset files because matched-cost budget values will differ
+# between OmniDocBench and FinTabNet and run_calibration.py is
+# single-split-per-invocation.
+#
+# Sweep coverage spans the plan's full tile set {2, 4, 6, 8, 10, 12,
+# 16}, split into low/high/fixed sub-lists to fit the existing
+# config schema:
+#   low_max_tiles:        [2, 4, 6]
+#   high_max_tiles:       [10, 12, 16]    -> 3 x 3 = 9 adaptive pairs
+#   fixed_2b_max_tiles:   [4, 6, 8, 10, 12]
+#   fixed_8b_max_tiles:   [6, 8, 10, 12]
+#
+# Compute estimate (50 calibration pages, real adapters, L4):
+#   adaptive sweep:  9 pairs x ~1.55 calls/page x 50 pages = ~700 real 2B
+#   fixed_2b sweep:  5 pts x 50 pages                       =  250 real 2B
+#   fixed_8b sweep:  4 pts x 50 pages                       =  200 real 8B
+#   total per dataset: ~1150 inferences (~5-7 GPU-hours on L4)
+#   both datasets:     ~2300 inferences (~10-14 GPU-hours total)
+# Within the plan's Stage 6 cost envelope (~8 GPU-hours base + buffer).
+run_id: scaleup_v2_calibration_omnidocbench_v1
+
+split:
+  manifest_path: data/splits/scaleup_v2/omnidocbench/calibration.json
+  records_path: data/omnidocbench/records.json
+  image_root: data
+
+prompt_config_path: configs/prompts/table_parse_v2.yaml
+model_config_path: configs/models/internvl2_real.yaml
+
+candidates:
+  low_max_tiles:        [2, 4, 6]
+  high_max_tiles:       [10, 12, 16]
+  fixed_2b_max_tiles:   [4, 6, 8, 10, 12]
+  fixed_8b_max_tiles:   [6, 8, 10, 12]
+
+# Matched-cost target. The MVP measured adaptive at ~9.5-10.6 tiles/page
+# on OmniDocBench; keep the target there for continuity with the MVP's
+# headline. The selector picks the adaptive pair within tolerance whose
+# measured cost is closest to this value, then matches fixed_2b /
+# fixed_8b to the adaptive's measured cost.
+target_adaptive_cost_tiles: 10.0
+matched_cost_tolerance: 0.10
+
+models:
+  adaptive: internvl2-2b
+  fixed_2b: internvl2-2b
+  fixed_8b: internvl2-8b
+
+output:
+  sweep_root: outputs/scaleup_v2/calibration/omnidocbench
+  sweep_summaries_path: outputs/scaleup_v2/calibration/omnidocbench_summaries.jsonl
+  # Per-dataset frozen artifact. The MVP frozen_budgets.json is
+  # preserved as-is (the MVP record) and never overwritten by scale-up
+  # v2 runs.
+  frozen_budgets_path: configs/calibration/frozen_budgets_v2_omnidocbench.json

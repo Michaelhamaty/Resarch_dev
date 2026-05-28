@@ -1,0 +1,52 @@
+# Scale-up v2 Stage 6 calibration — FinTabNet side.
+#
+# Plan reference: docs/specs/scaleup_v2_plan.md Stage 6.
+# Companion: configs/calibration/scaleup_v2_omnidocbench.yaml. Run
+# whichever finishes first; the two are independent.
+#
+# Shape mirrors scaleup_v2_omnidocbench.yaml. The FinTabNet
+# calibration split is the 50-page manifest written by
+# scripts/scaleup/build_scaleup_splits.py against the apoidea/
+# fintabnet-html en/validation source (locked source — see
+# docs/runbooks/fintabnet_provenance.md).
+#
+# Budget candidates identical to the OmniDocBench config so the
+# tile sweep covers the same plan-mandated {2, 4, 6, 8, 10, 12, 16}
+# set on both sides. The realized matched-cost values may differ
+# between datasets (FinTabNet's table density and page complexity
+# distribution differ from OmniDocBench) — that's why the two
+# frozen artifacts are kept per-dataset.
+run_id: scaleup_v2_calibration_fintabnet_v1
+
+split:
+  manifest_path: data/splits/scaleup_v2/fintabnet/calibration.json
+  records_path: data/fintabnet/records.json
+  image_root: data
+
+prompt_config_path: configs/prompts/table_parse_v2.yaml
+model_config_path: configs/models/internvl2_real.yaml
+
+candidates:
+  low_max_tiles:        [2, 4, 6]
+  high_max_tiles:       [10, 12, 16]
+  fixed_2b_max_tiles:   [4, 6, 8, 10, 12]
+  fixed_8b_max_tiles:   [6, 8, 10, 12]
+
+# Initial target matches OmniDocBench for symmetry; the selector picks
+# the in-tolerance adaptive pair closest to this. If FinTabNet's
+# adaptive sweep lands far from 10.0 tiles/page (e.g. its pages are
+# uniformly simpler and reparse rates are low), accept the closest
+# in-band pair and document the per-dataset matched-cost value in
+# docs/paper_measurables.md.
+target_adaptive_cost_tiles: 10.0
+matched_cost_tolerance: 0.10
+
+models:
+  adaptive: internvl2-2b
+  fixed_2b: internvl2-2b
+  fixed_8b: internvl2-8b
+
+output:
+  sweep_root: outputs/scaleup_v2/calibration/fintabnet
+  sweep_summaries_path: outputs/scaleup_v2/calibration/fintabnet_summaries.jsonl
+  frozen_budgets_path: configs/calibration/frozen_budgets_v2_fintabnet.json
