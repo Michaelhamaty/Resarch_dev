@@ -1,0 +1,58 @@
+{
+  "budgets": {
+    "B_fix_2B": {
+      "adapter_kind": "internvl2",
+      "max_tiles": 11,
+      "model_name": "internvl2-2b",
+      "name": "B_fix_2B"
+    },
+    "B_fix_8B": {
+      "adapter_kind": "internvl2",
+      "max_tiles": 11,
+      "model_name": "internvl2-8b",
+      "name": "B_fix_8B"
+    },
+    "B_high": {
+      "adapter_kind": "internvl2",
+      "max_tiles": 12,
+      "model_name": "internvl2-2b",
+      "name": "B_high"
+    },
+    "B_low": {
+      "adapter_kind": "internvl2",
+      "max_tiles": 2,
+      "model_name": "internvl2-2b",
+      "name": "B_low"
+    }
+  },
+  "generated_at": "2026-05-28T17:57:57.943012+00:00",
+  "pinning": {
+    "calibration_config_path": "configs/calibration/scaleup_v2_omnidocbench.yaml",
+    "calibration_split_manifest": "data/splits/scaleup_v2/omnidocbench/calibration.json",
+    "calibration_split_sha256": "f9082e7ddacd9d96a5aef4cd640a9592f475eb8be83de793f9e6084ba2f84325",
+    "cost_unit": "max_tiles",
+    "matched_cost_tolerance": 0.1
+  },
+  "run_id": "scaleup_v2_calibration_omnidocbench_v1_recovered",
+  "schema_version": 1,
+  "selection": {
+    "adaptive": {
+      "high_max_tiles": 12,
+      "low_max_tiles": 2,
+      "measured_cost_tiles": 10.64,
+      "target_cost_tiles": 10.0
+    },
+    "fixed_2b": {
+      "max_tiles": 11,
+      "measured_cost_tiles": 11.0,
+      "target_cost_tiles": 10.64,
+      "within_tolerance": true
+    },
+    "fixed_8b": {
+      "max_tiles": 11,
+      "measured_cost_tiles": 11.0,
+      "target_cost_tiles": 10.64,
+      "within_tolerance": true
+    }
+  }
+}
