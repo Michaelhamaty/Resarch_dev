@@ -336,11 +336,11 @@ def main(argv: list[str] | None = None) -> int:
         reference_model_name=args.reference_model_name,
         models=models,
     )
-    tokenizers_match = (
-        image_token_id_8b is not None
-        and image_token_id_2b is not None
-        and image_token_id_8b == image_token_id_2b
-    )
+    # Parity = both tokenizers map <image> the same way. Two real ids
+    # that agree is textbook parity. Two None values (both encode
+    # "<image>" as multiple sub-tokens) is also parity -- identical
+    # behavior. The disqualifying case is one None and one int.
+    tokenizers_match = image_token_id_8b == image_token_id_2b
 
     checks = SmokeChecks(
         vram_within_budget=peak_vram_gb <= args.vram_budget_gb,
@@ -393,20 +393,36 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def _resolve_image_path(records_path: Path, image_path_field: str) -> Path:
-    """Records image_path is stored relative to the data dir parent."""
+    """Resolve a records.json image_path to an absolute file path.
+
+    Both the OmniDocBench and FinTabNet fixture builders write
+    image_path as "<dataset>/images/<page_id>.<ext>" -- relative
+    to the data/ directory, not the repo root. Tries paths in
+    most-to-least-likely order and returns the first one that exists;
+    raises FileNotFoundError listing every attempt if none match.
+    """
 
     candidate = Path(image_path_field)
     if candidate.is_absolute() and candidate.exists():
         return candidate
-    # The records.json typically lives at data/<dataset>/records.json
-    # and image_path is "<dataset>/images/<page_id>.png".
-    repo_root = records_path.resolve().parent.parent.parent
-    rooted = repo_root / image_path_field
-    if rooted.exists():
-        return rooted
-    # Fallback: same dir as records.json
-    sibling = records_path.parent / candidate.name
-    return sibling
+
+    records_abs = records_path.resolve()
+    data_root = records_abs.parent.parent  # data/<dataset>/records.json -> data/
+    repo_root = records_abs.parent.parent.parent
+
+    attempts = [
+        data_root / image_path_field,
+        repo_root / image_path_field,
+        records_abs.parent / candidate.name,
+        records_abs.parent / "images" / candidate.name,
+    ]
+    for p in attempts:
+        if p.exists():
+            return p
+    raise FileNotFoundError(
+        f"Could not resolve image {image_path_field!r}; tried: "
+        + ", ".join(str(p) for p in attempts)
+    )
 
 
 def _tokenizer_image_token_ids(

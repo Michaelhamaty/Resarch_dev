@@ -9,7 +9,10 @@ dependencies = [
     "lxml>=5",
     "scipy>=1.10",
     "apted>=1.0.3",
-    "huggingface-hub>=1.16.4",
+    # Capped <1.0: transformers 4.x is incompatible with hf-hub 1.x.
+    # InternVL2 model code only works with transformers 4.45-4.49 (see
+    # gpu optional extra), which forces this ceiling.
+    "huggingface-hub>=0.26,<1.0",
     "pyarrow>=15",
 ]
 
@@ -27,12 +30,19 @@ dev = [
 # create a reproducible venv on any L4-class machine.
 gpu = [
     "torch>=2.1",
-    "transformers>=4.40",
+    # Capped <4.50: rename of `_tied_weights_keys` to
+    # `all_tied_weights_keys` broke InternVL2's bundled modeling code.
+    # 4.49 verified working on L4 with InternVL2-8B.
+    "transformers>=4.45,<4.50",
     "torchvision>=0.16",
     "accelerate>=0.30",
     "timm>=0.9",
     "sentencepiece>=0.2",
     "einops>=0.7",
+    # InternVL2-8B tokenizer extraction needs one of these:
+    # SentencePiece path -> protobuf; TikToken fallback -> tiktoken.
+    "protobuf>=4",
+    "tiktoken>=0.7",
 ]
 
 [build-system]
