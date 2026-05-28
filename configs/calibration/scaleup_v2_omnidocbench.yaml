@@ -1,33 +1,25 @@
 # Scale-up v2 Stage 6 calibration — OmniDocBench side.
 #
 # Plan reference: docs/specs/scaleup_v2_plan.md Stage 6.
-# Companion: configs/calibration/scaleup_v2_fintabnet.yaml (run after
-# this finishes so both per-dataset frozen artifacts exist before
-# Stage 7).
 #
-# The existing scripts/calibration/run_calibration.py is reused
-# unchanged (one --config flag, one calibration run). Per-dataset
-# configs match the established phase5_omnidocbench.yaml pattern; the
-# plan's singular "scaleup_v2.yaml" name is realized as two per-
-# dataset files because matched-cost budget values will differ
-# between OmniDocBench and FinTabNet and run_calibration.py is
-# single-split-per-invocation.
+# HISTORY: this config originally specified a 3x3 adaptive grid + 5
+# fixed_2b + 4 fixed_8b candidates which over-shot the plan's
+# ~8-GPU-hour envelope at the empirically-observed 48 sec/page rate
+# (would have taken ~27 GPU-hours for both datasets). The run was
+# killed after 8 of 9 adaptive pairs completed; the frozen artifact
+# was recovered via scripts/scaleup/recover_calibration_v2.py, which
+# selects (B_low, B_high) from the 8 completed pairs and sets
+# matched-cost fixed budgets deterministically (measured cost ==
+# max_tiles for fixed budgets, so no actual sweep is required).
 #
-# Sweep coverage spans the plan's full tile set {2, 4, 6, 8, 10, 12,
-# 16}, split into low/high/fixed sub-lists to fit the existing
-# config schema:
-#   low_max_tiles:        [2, 4, 6]
-#   high_max_tiles:       [10, 12, 16]    -> 3 x 3 = 9 adaptive pairs
-#   fixed_2b_max_tiles:   [4, 6, 8, 10, 12]
-#   fixed_8b_max_tiles:   [6, 8, 10, 12]
+# This config is preserved as-is for audit (the recovery script
+# records its path in the frozen artifact's pinning section). For
+# Stage 7, ONLY frozen_budgets_v2_omnidocbench.json matters; this
+# YAML is read once for its split/model/prompt pinning metadata.
 #
-# Compute estimate (50 calibration pages, real adapters, L4):
-#   adaptive sweep:  9 pairs x ~1.55 calls/page x 50 pages = ~700 real 2B
-#   fixed_2b sweep:  5 pts x 50 pages                       =  250 real 2B
-#   fixed_8b sweep:  4 pts x 50 pages                       =  200 real 8B
-#   total per dataset: ~1150 inferences (~5-7 GPU-hours on L4)
-#   both datasets:     ~2300 inferences (~10-14 GPU-hours total)
-# Within the plan's Stage 6 cost envelope (~8 GPU-hours base + buffer).
+# To re-run from scratch (NOT recommended), use the tight grid that
+# scaleup_v2_fintabnet.yaml uses (2x2 adaptive + 1 fixed_2b + 1
+# fixed_8b, ~5-6 GPU-hr).
 run_id: scaleup_v2_calibration_omnidocbench_v1
 
 split:

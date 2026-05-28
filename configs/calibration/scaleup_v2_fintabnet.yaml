@@ -1,21 +1,27 @@
-# Scale-up v2 Stage 6 calibration — FinTabNet side.
+# Scale-up v2 Stage 6 calibration — FinTabNet side (TIGHT grid).
 #
 # Plan reference: docs/specs/scaleup_v2_plan.md Stage 6.
-# Companion: configs/calibration/scaleup_v2_omnidocbench.yaml. Run
-# whichever finishes first; the two are independent.
+# Companion: configs/calibration/scaleup_v2_omnidocbench.yaml. The
+# OmniDocBench side was recovered via
+# scripts/scaleup/recover_calibration_v2.py (Stage 6 ran ~10 hr on a
+# wider grid before being killed; 8 of 9 adaptive pairs completed and
+# fixed sweeps were skipped because measured cost == max_tiles for
+# fixed budgets by definition).
 #
-# Shape mirrors scaleup_v2_omnidocbench.yaml. The FinTabNet
-# calibration split is the 50-page manifest written by
-# scripts/scaleup/build_scaleup_splits.py against the apoidea/
-# fintabnet-html en/validation source (locked source — see
-# docs/runbooks/fintabnet_provenance.md).
+# This FinTabNet config uses a TIGHT grid sized for ~6 GPU-hr on L4 at
+# the empirically-observed ~48 sec/page wall time:
+#   adaptive: 2 x 2 = 4 pairs, ~1.55 calls/page x 50 pages -> ~310 real
+#             2B inferences -> ~4.1 hr
+#   fixed_2b: 1 point x 50 pages                            ->  ~0.7 hr
+#   fixed_8b: 1 point x 50 pages (8B slower, ~80 sec/page)  ->  ~1.1 hr
+#   total per dataset: ~6 hr
 #
-# Budget candidates identical to the OmniDocBench config so the
-# tile sweep covers the same plan-mandated {2, 4, 6, 8, 10, 12, 16}
-# set on both sides. The realized matched-cost values may differ
-# between datasets (FinTabNet's table density and page complexity
-# distribution differ from OmniDocBench) — that's why the two
-# frozen artifacts are kept per-dataset.
+# Coverage rationale: low=[2,6] spans the plan-mandated low tile
+# range, high=[10,16] spans the high range. The (low=4,high=12) corner
+# is excluded as redundant given the grid's other 4 pairs surround it.
+# Single-point fixed sweeps are scientifically lossless (matched cost
+# = max_tiles is deterministic; see recover_calibration_v2.py's
+# rationale).
 run_id: scaleup_v2_calibration_fintabnet_v1
 
 split:
@@ -27,10 +33,10 @@ prompt_config_path: configs/prompts/table_parse_v2.yaml
 model_config_path: configs/models/internvl2_real.yaml
 
 candidates:
-  low_max_tiles:        [2, 4, 6]
-  high_max_tiles:       [10, 12, 16]
-  fixed_2b_max_tiles:   [4, 6, 8, 10, 12]
-  fixed_8b_max_tiles:   [6, 8, 10, 12]
+  low_max_tiles:        [2, 6]
+  high_max_tiles:       [10, 16]
+  fixed_2b_max_tiles:   [10]
+  fixed_8b_max_tiles:   [10]
 
 # Initial target matches OmniDocBench for symmetry; the selector picks
 # the in-tolerance adaptive pair closest to this. If FinTabNet's
