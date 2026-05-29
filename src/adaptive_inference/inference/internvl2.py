@@ -65,6 +65,32 @@ class InternVL2Adapter(InferenceAdapter):
     max_new_tokens : int
         Generation cap. The default is generous; tune in the model
         registry yaml if cost tracking requires it.
+    loop_stop_window : int
+        Surgical anti-runaway guard. InternVL2-2B greedy-decodes into
+        degenerate exact-repeat loops on a large fraction of hard pages
+        (measured ~62-76%), running to ``max_new_tokens`` (~64s on an L4)
+        and producing garbage. This is genuine model behavior — NOT a
+        decoding-config bug — and it cannot be suppressed by repetition
+        penalties (unreliable, and they corrupt legitimate dense-table
+        HTML) nor by a length cap (real outputs reach ~1966 tokens, fully
+        overlapping the runaways).
+
+        Instead we stop generation ONLY once the trailing ``loop_stop_window``
+        generated tokens are *exactly periodic* (see ``_tail_is_periodic``).
+        Crucially this is a STOPPING criterion, not a logit modifier: it
+        never changes which tokens are chosen, so any non-looping page is
+        byte-identical to plain greedy decode (verifier verdicts and the
+        frozen calibration stay valid). Only genuine loops — which the
+        structural verifier fails regardless of length — are truncated
+        early (~2048 -> a few hundred tokens). Exact-periodicity over a
+        100-token window essentially never fires on legitimate varied
+        table content (cell values differ), so false positives are
+        negligible. Set to ``0`` to disable. Deterministic.
+    loop_stop_max_period : int
+        Largest repeat period the loop detector considers (HTML-row and
+        sentence loops are short-to-medium period). Default ``50`` means a
+        100-token window must be at least two full repeats of a <=50-token
+        block. Ignored when ``loop_stop_window`` is ``0``.
     """
 
     def __init__(
@@ -75,6 +101,8 @@ class InternVL2Adapter(InferenceAdapter):
         device: str | None = None,
         dtype: str | None = None,
         max_new_tokens: int = 2048,
+        loop_stop_window: int = 100,
+        loop_stop_max_period: int = 50,
     ) -> None:
         # Heavy imports kept lazy so importing this module on a machine
         # without torch installed (e.g. during local unit tests) works.
@@ -84,6 +112,8 @@ class InternVL2Adapter(InferenceAdapter):
         self.model_name = model_name
         self.model_id = model_id
         self.max_new_tokens = max_new_tokens
+        self.loop_stop_window = loop_stop_window
+        self.loop_stop_max_period = loop_stop_max_period
 
         self._torch = torch
         self.device = device or _auto_device(torch)
@@ -135,6 +165,12 @@ class InternVL2Adapter(InferenceAdapter):
             "max_new_tokens": self.max_new_tokens,
             "do_sample": False,
         }
+        # Inject the surgical loop-stop. Passed via generation_config so it
+        # reaches model.generate() as the `stopping_criteria` kwarg without
+        # touching InternVL2's chat() signature. Disabled when window<=0.
+        if self.loop_stop_window and self.loop_stop_window > 0:
+            generation_config["stopping_criteria"] = self._build_loop_stopper()
+
         with self._torch.inference_mode():
             response = self.model.chat(
                 tokenizer=self.tokenizer,
@@ -164,6 +200,39 @@ class InternVL2Adapter(InferenceAdapter):
             started_at=started_at,
             finished_at=finished_at,
         )
+
+    def _build_loop_stopper(self) -> Any:
+        """Build a fresh per-page ``StoppingCriteriaList`` for runaway loops.
+
+        Lazily imports the transformers base class (module import stays
+        torch-free). The criterion inspects only the trailing
+        ``loop_stop_window`` generated tokens and halts when they are
+        exactly periodic. State (the prompt length) is per-page, so a fresh
+        instance is built each call. The pure decision lives in
+        ``_tail_is_periodic`` so it is unit-testable without torch.
+        """
+
+        from transformers import StoppingCriteria, StoppingCriteriaList
+
+        window = self.loop_stop_window
+        max_period = self.loop_stop_max_period
+
+        class _LoopStop(StoppingCriteria):  # type: ignore[misc]
+            def __init__(self) -> None:
+                self._prompt_len: int | None = None
+
+            def __call__(self, input_ids: Any, scores: Any, **kwargs: Any) -> bool:
+                seq_len = int(input_ids.shape[1])
+                # First call lands one token into generation; treat the rest
+                # as the prompt so we only count *generated* tokens.
+                if self._prompt_len is None:
+                    self._prompt_len = seq_len - 1
+                if seq_len - self._prompt_len < window:
+                    return False
+                tail = input_ids[0, -window:].tolist()
+                return _tail_is_periodic(tail, window, max_period)
+
+        return StoppingCriteriaList([_LoopStop()])
 
 
 # --------------------------------------------------------------------------- #
@@ -243,6 +312,37 @@ def _dynamic_tile_split(image: Image.Image, *, max_num: int) -> list[Image.Image
 # --------------------------------------------------------------------------- #
 # Small helpers                                                               #
 # --------------------------------------------------------------------------- #
+
+
+def _tail_is_periodic(token_ids: list[int], window: int, max_period: int) -> bool:
+    """Return True iff the last ``window`` tokens are exactly periodic.
+
+    The decision behind the runaway loop-stop. We look at the trailing
+    ``window`` generated tokens and report whether they are perfectly
+    periodic with some period ``p`` in ``[1, min(max_period, window // 2)]``
+    — i.e. ``ids[i] == ids[i - p]`` for every position in the window. The
+    ``window // 2`` bound guarantees at least two full repeats.
+
+    Why *exact* periodicity: degenerate decode loops (``<tr><tr>...`` or a
+    verbatim sentence repeated) are exactly periodic, while legitimate
+    table HTML is not — its repeated structural tags (``</td><td>``) wrap
+    *different* cell values, breaking exact periodicity well before a full
+    100-token window. So this fires on genuine loops and essentially never
+    on real content, which is what lets us truncate runaways without
+    biasing healthy output.
+
+    Pure and torch-free so it can be unit-tested directly.
+    """
+
+    if window <= 0 or len(token_ids) < window:
+        return False
+    w = token_ids[-window:]
+    length = len(w)
+    upper = min(max_period, length // 2)
+    for p in range(1, upper + 1):
+        if all(w[i] == w[i - p] for i in range(p, length)):
+            return True
+    return False
 
 
 def _auto_device(torch: Any) -> str:

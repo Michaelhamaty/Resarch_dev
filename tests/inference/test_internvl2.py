@@ -102,6 +102,15 @@ def _install_fake_torch_stack(monkeypatch: pytest.MonkeyPatch) -> SimpleNamespac
         return_value=fake_tokenizer
     )
 
+    # Stand-ins for the lazily-imported loop-stop classes. The base is a
+    # plain class to subclass; the list is just `list` so `List([crit])`
+    # builds a real list the adapter can stash in generation_config.
+    class _FakeStoppingCriteria:
+        pass
+
+    fake_transformers.StoppingCriteria = _FakeStoppingCriteria
+    fake_transformers.StoppingCriteriaList = list
+
     # torchvision.transforms.functional
     fake_torchvision = ModuleType("torchvision")
     fake_transforms = ModuleType("torchvision.transforms")
@@ -221,6 +230,43 @@ def test_run_injects_image_token_into_prompt(
     assert kwargs["generation_config"]["do_sample"] is False
 
 
+def test_run_injects_loop_stopper_by_default(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Default construction wires the surgical runaway loop-stop."""
+
+    fakes = _install_fake_torch_stack(monkeypatch)
+    from adaptive_inference.inference.internvl2 import InternVL2Adapter
+
+    adapter = InternVL2Adapter(
+        model_name="internvl2-2b", model_id="OpenGVLab/InternVL2-2B"
+    )
+    adapter.run(page_id="p", image=_img(), budget=BUDGET, prompt=PROMPT)
+    _, kwargs = fakes.model_chat.call_args
+    gen = kwargs["generation_config"]
+    assert gen["do_sample"] is False  # still deterministic greedy
+    assert "stopping_criteria" in gen
+    assert len(gen["stopping_criteria"]) == 1
+
+
+def test_run_omits_loop_stopper_when_disabled(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """``loop_stop_window=0`` leaves generation untouched (pure greedy)."""
+
+    fakes = _install_fake_torch_stack(monkeypatch)
+    from adaptive_inference.inference.internvl2 import InternVL2Adapter
+
+    adapter = InternVL2Adapter(
+        model_name="internvl2-2b",
+        model_id="OpenGVLab/InternVL2-2B",
+        loop_stop_window=0,
+    )
+    adapter.run(page_id="p", image=_img(), budget=BUDGET, prompt=PROMPT)
+    _, kwargs = fakes.model_chat.call_args
+    assert "stopping_criteria" not in kwargs["generation_config"]
+
+
 def test_run_does_not_double_inject_image_token(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -309,6 +355,56 @@ def test_max_tiles_propagates_to_tile_count(
     assert fakes.stack_calls, "torch.stack must be called with the tile tensors"
     assert fakes.stack_calls[-1] <= 6
     assert fakes.stack_calls[-1] >= 1
+
+
+def test_tail_periodic_detects_single_token_loop() -> None:
+    from adaptive_inference.inference.internvl2 import _tail_is_periodic
+
+    # `<tr>`-style runaway: one token id repeated.
+    ids = list(range(50)) + [7] * 100
+    assert _tail_is_periodic(ids, window=100, max_period=50) is True
+
+
+def test_tail_periodic_detects_short_period_loop() -> None:
+    from adaptive_inference.inference.internvl2 import _tail_is_periodic
+
+    # A 4-token block repeated (e.g. an identical empty row emitted forever).
+    block = [11, 22, 33, 44]
+    ids = [1, 2, 3] + block * 30  # tail is perfectly period-4
+    assert _tail_is_periodic(ids, window=100, max_period=50) is True
+
+
+def test_tail_periodic_detects_long_period_loop() -> None:
+    from adaptive_inference.inference.internvl2 import _tail_is_periodic
+
+    # A 50-token sentence repeated twice exactly fills a 100-token window.
+    sentence = list(range(100, 150))
+    ids = [9, 9] + sentence + sentence
+    assert _tail_is_periodic(ids, window=100, max_period=50) is True
+
+
+def test_tail_periodic_rejects_varied_content() -> None:
+    from adaptive_inference.inference.internvl2 import _tail_is_periodic
+
+    # Legit-ish: repeated structural token (0) wrapping DIFFERENT cell ids.
+    ids: list[int] = []
+    for cell in range(100):
+        ids += [0, 1000 + cell, 0]  # the differing value breaks periodicity
+    assert _tail_is_periodic(ids, window=100, max_period=50) is False
+
+
+def test_tail_periodic_rejects_near_miss() -> None:
+    from adaptive_inference.inference.internvl2 import _tail_is_periodic
+
+    ids = [5] * 100
+    ids[-1] = 6  # one token off => not exactly periodic => conservative no-fire
+    assert _tail_is_periodic(ids, window=100, max_period=50) is False
+
+
+def test_tail_periodic_too_short_is_false() -> None:
+    from adaptive_inference.inference.internvl2 import _tail_is_periodic
+
+    assert _tail_is_periodic([7] * 40, window=100, max_period=50) is False
 
 
 def test_factory_builds_real_adapter_for_internvl2_kind(
