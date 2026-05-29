@@ -39,19 +39,19 @@
     "adaptive": {
       "high_max_tiles": 16,
       "low_max_tiles": 6,
-      "measured_cost_tiles": 10.16,
+      "measured_cost_tiles": 10.48,
       "target_cost_tiles": 10.0
     },
     "fixed_2b": {
       "max_tiles": 10,
       "measured_cost_tiles": 10.0,
-      "target_cost_tiles": 10.16,
+      "target_cost_tiles": 10.48,
       "within_tolerance": true
     },
     "fixed_8b": {
       "max_tiles": 10,
       "measured_cost_tiles": 10.0,
-      "target_cost_tiles": 10.16,
+      "target_cost_tiles": 10.48,
       "within_tolerance": true
     }
   }

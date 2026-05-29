@@ -35,3 +35,41 @@ misses the 9 verifier-passing pages that would still gain quality at 10 tiles.
 Phase 7 audit: 9 ok, 2 warn (splits_identical MVP shortcut, accuracy_status
 stub-adapter gate), 0 fail. Artifacts under
 `outputs/analysis/phase6_omnidocbench_v1/`.
+
+## 2026-05-29 — Stage 6 re-validation under the surgical loop-stop (50-pp calib splits)
+
+The InternVL2 adapter now carries the exact-periodicity runaway loop-stop
+(commit `6e2f89e`): it only **truncates** degenerate exact-repeat token tails
+and never alters token choices. Re-ran the *frozen* budget points on each
+50-page calibration split to confirm the loop-stop is cost-neutral (so the
+frozen Stage-6 budgets remain valid). Single-point grids written to separate
+`*_validate` artifacts; committed budgets not overwritten by the run.
+
+| dataset | budgets (B_low/B_high/B_fix) | reparse | adaptive cost_tiles (committed → re-measured) | fixed within_tol |
+|---|---|---:|---:|:--:|
+| OmniDocBench | 2 / 12 / 11 | 0.72 (36/50) | 10.64 → **10.64** (identical) | true / true |
+| FinTabNet    | 6 / 16 / 10 | 0.26→**0.28** (13→14/50) | 10.16 → **10.48** | true / true |
+
+**OmniDoc:** byte-for-byte cost-neutral — same 36 pages reparse, cost unchanged.
+**FinTab:** one extra borderline page reparses under the loop-stop (deterministic,
+not noise), nudging adaptive cost 10.16 → 10.48 (3.1%, within the 0.10 matched
+tolerance). Budgets (tile counts) are **unchanged** — single-point grid, no
+re-selection possible.
+
+**Action — re-froze FinTab `measured_cost_tiles` 10.16 → 10.48** in
+`configs/calibration/frozen_budgets_v2_fintabnet.json` (also the two fixed
+`target_cost_tiles`). Rationale: Stage 7's random-escalation probability is
+derived as `p = (measured_cost_tiles − B_low) / B_high`
+(`experiment/frozen_inputs.py:derive_calibration_reparse_rate`). Using the
+loop-stop-measured 10.48 sets random `p = 0.28`, so adaptive / random /
+fixed_matched all sit at 10.48 tiles/page — preserving exact matched-cost
+fairness under the adapter Stage 7 actually runs. OmniDoc needed no change.
+
+**Loop-stop behavioural note (accepted tradeoff):** the stopper reliably catches
+*low-budget* single-token loops (B_low pages drop from the ~64s/2048-token cap to
+seconds) but does **not** catch *matched/high-budget* runaways, whose tails are
+not exactly periodic within the 100-token window — fixed_2b@matched still caps
+~30% of pages at 2048 tok (~64s), and 8B@matched runaways cost ~157s/page. Net:
+calibration is now affordable and the low-budget worst case is bounded, but the
+full Stage 7 sweep remains in the ~15–19 GPU-hr envelope (8B dominates).
+Validation pace (mean total/page): OmniDoc adaptive 57.8s, FinTab adaptive 22.1s.

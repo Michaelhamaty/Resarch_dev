@@ -1,0 +1,47 @@
+# Scale-up v2 Stage 6 RE-VALIDATION — FinTabNet side (single-point).
+#
+# Companion to configs/calibration/scaleup_v2_omnidocbench_validate.yaml.
+# Purpose: prove the surgical runaway loop-stop (commit 6e2f89e) is
+# cost-neutral on FinTabNet too. The loop-stop only TRUNCATES degenerate
+# exact-repeat tails; it never alters token choices. Hypothesis: the
+# frozen FinTabNet adaptive selection is UNCHANGED.
+#
+# This re-runs ONLY the currently-frozen points on the 50-page
+# calibration split and compares measured_cost_tiles against the
+# committed artifact (configs/calibration/frozen_budgets_v2_fintabnet.json:
+#  adaptive measured_cost_tiles=10.16 [reparse 0.26], fixed_2b/8b=10.0).
+#
+# IMPORTANT: writes to a SEPARATE *_validate artifact so the committed
+# frozen budgets are never overwritten. If the re-measured cost matches
+# within matched_cost_tolerance, the frozen budgets stand as-is and we
+# proceed to Stage 7.
+run_id: scaleup_v2_calibration_fintabnet_validate
+
+split:
+  manifest_path: data/splits/scaleup_v2/fintabnet/calibration.json
+  records_path: data/fintabnet/records.json
+  image_root: data
+
+prompt_config_path: configs/prompts/table_parse_v2.yaml
+model_config_path: configs/models/internvl2_real.yaml
+
+# Single-point grid == the currently-frozen FinTabNet selection.
+candidates:
+  low_max_tiles:        [6]
+  high_max_tiles:       [16]
+  fixed_2b_max_tiles:   [10]
+  fixed_8b_max_tiles:   [10]
+
+target_adaptive_cost_tiles: 10.16
+matched_cost_tolerance: 0.10
+
+models:
+  adaptive: internvl2-2b
+  fixed_2b: internvl2-2b
+  fixed_8b: internvl2-8b
+
+output:
+  sweep_root: outputs/scaleup_v2/calibration/fintabnet_validate
+  sweep_summaries_path: outputs/scaleup_v2/calibration/fintabnet_validate_summaries.jsonl
+  # SEPARATE artifact — does NOT overwrite the committed frozen budgets.
+  frozen_budgets_path: configs/calibration/frozen_budgets_v2_fintabnet_validate.json

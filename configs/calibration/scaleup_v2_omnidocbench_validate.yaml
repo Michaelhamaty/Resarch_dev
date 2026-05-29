@@ -1,0 +1,53 @@
+# Scale-up v2 Stage 6 RE-VALIDATION — OmniDocBench side (single-point).
+#
+# Purpose: the InternVL2 adapter now carries the surgical runaway
+# loop-stop (commit 6e2f89e). The loop-stop only TRUNCATES degenerate
+# exact-repeat tails; it never alters token choices, so:
+#   - healthy pages produce byte-identical output (stopper never fires),
+#   - runaway pages produce shorter-but-still-malformed output that the
+#     structural verifier flags exactly as before.
+# Hypothesis: the frozen adaptive selection is therefore UNCHANGED, and
+# only wall-clock improves. This config PROVES that by re-running ONLY
+# the currently-frozen points on the 50-page calibration split and
+# comparing measured_cost_tiles against the committed artifact
+# (configs/calibration/frozen_budgets_v2_omnidocbench.json:
+#  adaptive measured_cost_tiles=10.64, fixed_2b/8b=11.0).
+#
+# It also yields the real per-page pace under loop-stop, which grounds
+# the Stage 7 ETA.
+#
+# IMPORTANT: writes to a SEPARATE *_validate artifact so the committed
+# frozen budgets are never overwritten by this validation run. If the
+# re-measured cost matches within matched_cost_tolerance, the frozen
+# budgets stand as-is and we proceed to Stage 7.
+run_id: scaleup_v2_calibration_omnidocbench_validate
+
+split:
+  manifest_path: data/splits/scaleup_v2/omnidocbench/calibration.json
+  records_path: data/omnidocbench/records.json
+  image_root: data
+
+prompt_config_path: configs/prompts/table_parse_v2.yaml
+model_config_path: configs/models/internvl2_real.yaml
+
+# Single-point grid == the currently-frozen selection. No re-derivation;
+# this is a fixed-point re-measurement under the loop-stop adapter.
+candidates:
+  low_max_tiles:        [2]
+  high_max_tiles:       [12]
+  fixed_2b_max_tiles:   [11]
+  fixed_8b_max_tiles:   [11]
+
+target_adaptive_cost_tiles: 10.64
+matched_cost_tolerance: 0.10
+
+models:
+  adaptive: internvl2-2b
+  fixed_2b: internvl2-2b
+  fixed_8b: internvl2-8b
+
+output:
+  sweep_root: outputs/scaleup_v2/calibration/omnidocbench_validate
+  sweep_summaries_path: outputs/scaleup_v2/calibration/omnidocbench_validate_summaries.jsonl
+  # SEPARATE artifact — does NOT overwrite the committed frozen budgets.
+  frozen_budgets_path: configs/calibration/frozen_budgets_v2_omnidocbench_validate.json
