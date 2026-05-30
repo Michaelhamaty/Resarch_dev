@@ -85,7 +85,11 @@ def _convert(elem) -> _Node:
         text = _normalize_text(elem.text_content())
     children: list[_Node] = []
     for child in elem:
-        child_tag = (child.tag or "").lower()
+        # Skip non-element nodes (HTML comments, processing instructions):
+        # lxml exposes their ``.tag`` as a callable, not a tag string.
+        if not isinstance(child.tag, str):
+            continue
+        child_tag = child.tag.lower()
         if child_tag in _STRUCTURAL_TAGS:
             children.append(_convert(child))
     return _Node(tag=tag, text=text, children=children)

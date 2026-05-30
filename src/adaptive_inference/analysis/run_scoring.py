@@ -160,7 +160,15 @@ def _score_one(
     sidecar = json.loads(sidecar_path.read_text(encoding="utf-8"))
     page_id = str(sidecar["page_id"])
     raw_rel = sidecar["raw_output_path"]
-    pred_text = (run_dir / raw_rel).read_text(encoding="utf-8")
+    # ``raw_output_path`` is stored relative to the *system* run dir (e.g.
+    # "final/raw/x.md" or "first_pass/raw/x.md"). Normal scoring passes that
+    # system dir as ``run_dir``. The adaptive first/final diagnostic instead
+    # points ``run_dir`` at a sub-pass dir (``…/first_pass``), so resolve from
+    # the parent when the direct join is absent rather than doubling the prefix.
+    raw_path = run_dir / raw_rel
+    if not raw_path.exists():
+        raw_path = run_dir.parent / raw_rel
+    pred_text = raw_path.read_text(encoding="utf-8")
 
     gold = ground_truth.get(page_id)
     if gold is None:

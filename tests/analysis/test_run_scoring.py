@@ -204,6 +204,47 @@ def test_adaptive_layout_uses_final_pages(tmp_path: Path) -> None:
     assert by_id["page_b"].pred_parse_error == "no_tables"
 
 
+def test_subpass_run_dir_resolves_raw_path_from_parent(tmp_path: Path) -> None:
+    """Adaptive first/final diagnostic points run_dir at a sub-pass dir.
+
+    ``raw_output_path`` is stored relative to the *system* run dir (e.g.
+    ``first_pass/raw/page_a.md``). When the diagnostic passes the sub-pass
+    dir (``…/adaptive_2b/first_pass``) as ``run_dir``, the direct join would
+    double the prefix (``…/first_pass/first_pass/raw/…``). The scorer must
+    fall back to resolving from the parent (system) dir instead.
+    """
+
+    system_dir = tmp_path / "adaptive_2b"
+    raw_dir = system_dir / "first_pass" / "raw"
+    pages_dir = system_dir / "first_pass" / "pages"
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    pages_dir.mkdir(parents=True, exist_ok=True)
+
+    (raw_dir / "page_a.md").write_text(GOLD_2X2, encoding="utf-8")
+    sidecar = {
+        "page_id": "page_a",
+        "model_name": "internvl2-2b",
+        "budget_name": "B_low",
+        "prompt_id": "table_parse_v1",
+        "raw_output_path": "first_pass/raw/page_a.md",  # relative to system_dir
+        "status": "ok",
+    }
+    (pages_dir / "page_a.json").write_text(
+        json.dumps(sidecar, sort_keys=True, indent=2) + "\n", encoding="utf-8"
+    )
+
+    gt_path = tmp_path / "gt.json"
+    _write_gt(gt_path, {"page_a": GOLD_2X2})
+
+    # run_dir is the sub-pass dir, not the system dir.
+    result = score_run(system_dir / "first_pass", gt_path)
+
+    assert result.pages_total == 1
+    by_id = {p.page_id: p for p in result.page_scores}
+    assert by_id["page_a"].cell_f1 == pytest.approx(1.0)
+    assert by_id["page_a"].pred_parse_error is None
+
+
 def test_cli_smoke(tmp_path: Path) -> None:
     run_dir = tmp_path / "run"
     _write_sidecar(run_dir, "page_a", GOLD_2X2)

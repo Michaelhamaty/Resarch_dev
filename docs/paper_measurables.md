@@ -73,3 +73,67 @@ not exactly periodic within the 100-token window — fixed_2b@matched still caps
 calibration is now affordable and the low-budget worst case is bounded, but the
 full Stage 7 sweep remains in the ~15–19 GPU-hr envelope (8B dominates).
 Validation pace (mean total/page): OmniDoc adaptive 57.8s, FinTab adaptive 22.1s.
+
+## 2026-05-30 — Stage 7 main sweep (real adapters, held-out splits) + Stage 9 results
+
+First full held-out evaluation. All 14 system-runs (7 systems × 2 datasets) ran
+on real InternVL2 2B/8B adapters over the held-out splits (OmniDoc n=90,
+FinTab n=150); **all status=ok**. Scored CPU-only by Stage 9
+(`run_phase7_v2.py`): cell-F1 + TEDS with 95% bootstrap CIs and paired Wilcoxon.
+Artifacts: `outputs/scaleup_v2/analysis/results_v2.{json,md}`, per-page
+`diagnostic_{dataset}.jsonl`; figures in `paper/figures/`. git `cae3f7e`.
+
+**OmniDocBench (n=90)**
+
+| system | cost_tiles | macro_cell_f1 | macro_text_sim (TEDS) | parse_err/90 |
+|---|---:|---:|---:|---:|
+| fixed_2b_low        |  2.00 | 0.0387 | 0.1055 | 70 |
+| fixed_2b_matched    | 11.00 | 0.1199 | 0.2683 | 57 |
+| adaptive_2b         | 11.33 | 0.1208 | 0.2740 | 45 |
+| random_2b_seed0     | 11.20 | 0.1230 | 0.2491 | 55 |
+| random_2b_seed1     | 11.47 | 0.1196 | 0.2454 | 51 |
+| random_2b_seed2     | 10.13 | 0.1000 | 0.2208 | 61 |
+| fixed_8b_matched    | 11.00 | 0.1995 | 0.3963 | 38 |
+
+**FinTabNet (n=150)**
+
+| system | cost_tiles | macro_cell_f1 | macro_text_sim (TEDS) | parse_err/150 |
+|---|---:|---:|---:|---:|
+| fixed_2b_low        |  6.00 | 0.1298 | 0.4827 | 41 |
+| fixed_2b_matched    | 10.00 | 0.1197 | 0.4646 | 37 |
+| adaptive_2b         | 10.37 | 0.1334 | 0.4915 | 30 |
+| random_2b_seed0     |  9.95 | 0.1157 | 0.4624 | 41 |
+| random_2b_seed1     |  9.84 | 0.1190 | 0.4758 | 44 |
+| random_2b_seed2     | 11.55 | 0.1242 | 0.4715 | 42 |
+| fixed_8b_matched    | 10.00 | 0.1335 | 0.5267 | 46 |
+
+**Paired Wilcoxon (cell-F1):**
+
+| comparison | OmniDoc Δ (a−b) / p | FinTab Δ (a−b) / p |
+|---|---|---|
+| adaptive vs fixed-matched          | +0.0009 / 0.729 (null) | **+0.0137 / 0.0479 (sig.)** |
+| adaptive vs random (pooled seeds)  | +0.0066 / 0.269 (null) | **+0.0138 / 0.000176 (sig.)** |
+
+**G7 fairness invariant — PASSES.** Within each dataset adaptive ≈ random ≈
+fixed_matched on cost_tiles (FinTab 10.37 / ~10.4 / 10.0; OmniDoc 11.33 / ~11.0 /
+11.0), so cell-F1 differences reflect compute *allocation*, not *amount*. The
+matched-budget comparison is valid.
+
+**Finding.** On **FinTabNet the verifier-triggered adaptive policy works**: it
+beats both the matched-cost baseline (p=0.048) and random escalation (p=0.0002)
+at equal cost, and 2B-adaptive (0.1334) essentially **matches fixed_8b**
+(0.1335) at ⅕ the model size. On **OmniDocBench the effect is null** — adaptive
+≈ fixed_matched ≈ random; here only the bigger 8B model (0.1995) clearly helps.
+Honest read: the "spend compute where the verifier flags trouble" thesis holds
+on the lower-reparse-rate FinTab regime but not on the high-reparse (0.72)
+OmniDoc regime, where nearly everything reparses and the allocation signal
+washes out.
+
+**Provenance note.** Per-system manifest snapshots were never stashed during the
+sweep loop, so `manifest.json` initially listed only the last system. Both
+dataset manifests were reconstructed from the authoritative `run.log.jsonl`
+files via the new `scripts/scaleup/rebuild_manifest.py` (no GPU re-run; reused
+header + 8B entry verbatim, reconstructed entries tagged with a provenance note).
+Two latent post-processing bugs surfaced and were fixed with regression tests:
+TEDS crash on HTML comments (`analysis/teds.py`), and a doubled-path resolution
+bug in the adaptive first/final diagnostic (`analysis/run_scoring.py`).
