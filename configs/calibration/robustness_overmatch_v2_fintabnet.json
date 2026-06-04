@@ -1,0 +1,66 @@
+{
+  "_provenance": {
+    "kind": "post_hoc_robustness_overmatch",
+    "not_calibration": true,
+    "derived_from": "configs/calibration/frozen_budgets_v2_fintabnet.json",
+    "override": "B_fix_2B.max_tiles 10 -> 11 (over-match robustness only)",
+    "rationale": "Held-out FinTab adaptive_2b cost = 10.37 tiles/page; the frozen matched baseline spends 10.0 (LESS than adaptive). This file runs a fixed_2b baseline at 11 tiles (MORE than adaptive) so the matched-budget claim can be bracketed: 10 < 10.37 < 11. NOT a calibration output and NOT chosen on the held-out accuracy. The canonical frozen artifact and the original 10-tile matched baseline are left untouched and must remain the headline comparison. Report this row whatever the outcome.",
+    "generated_at": "2026-06-04T00:00:00+00:00"
+  },
+  "budgets": {
+    "B_fix_2B": {
+      "adapter_kind": "internvl2",
+      "max_tiles": 11,
+      "model_name": "internvl2-2b",
+      "name": "B_fix_2B"
+    },
+    "B_fix_8B": {
+      "adapter_kind": "internvl2",
+      "max_tiles": 10,
+      "model_name": "internvl2-8b",
+      "name": "B_fix_8B"
+    },
+    "B_high": {
+      "adapter_kind": "internvl2",
+      "max_tiles": 16,
+      "model_name": "internvl2-2b",
+      "name": "B_high"
+    },
+    "B_low": {
+      "adapter_kind": "internvl2",
+      "max_tiles": 6,
+      "model_name": "internvl2-2b",
+      "name": "B_low"
+    }
+  },
+  "generated_at": "2026-06-04T00:00:00+00:00",
+  "pinning": {
+    "calibration_config_path": "configs/calibration/scaleup_v2_fintabnet.yaml",
+    "calibration_split_manifest": "data/splits/scaleup_v2/fintabnet/calibration.json",
+    "calibration_split_sha256": "b2f9b96455c3f969d414138ebc148c31f38631e4502acf67c91a71461334e6fe",
+    "cost_unit": "max_tiles",
+    "matched_cost_tolerance": 0.1
+  },
+  "run_id": "scaleup_v2_overmatch_fintabnet_v1",
+  "schema_version": 1,
+  "selection": {
+    "adaptive": {
+      "high_max_tiles": 16,
+      "low_max_tiles": 6,
+      "measured_cost_tiles": 10.48,
+      "target_cost_tiles": 10.0
+    },
+    "fixed_2b": {
+      "max_tiles": 11,
+      "measured_cost_tiles": 11.0,
+      "target_cost_tiles": 10.48,
+      "within_tolerance": false
+    },
+    "fixed_8b": {
+      "max_tiles": 10,
+      "measured_cost_tiles": 10.0,
+      "target_cost_tiles": 10.48,
+      "within_tolerance": true
+    }
+  }
+}

@@ -1,0 +1,46 @@
+# Post-hoc OVER-MATCH robustness run (NOT part of the frozen Stage 7 sweep).
+#
+# Purpose: run a single fixed_2b baseline at 11 tiles/page on the held-out
+# FinTabNet split, so the matched-budget claim can be bracketed —
+#   fixed@10 (10.0)  <  adaptive (10.37)  <  fixed@11 (11.0).
+# If adaptive still beats fixed@11 (a baseline handed MORE compute than
+# adaptive), the win is robust to the "adaptive just spent more" critique.
+#
+# This config is deliberately a SIBLING of configs/experiment/scaleup_v2.yaml,
+# not an edit to it. It:
+#   * points frozen_budgets_path at the post-hoc over-match artifact
+#     (configs/calibration/robustness_overmatch_v2_fintabnet.json), which is
+#     the canonical FinTab frozen file with ONLY B_fix_2B.max_tiles 10 -> 11;
+#   * writes to a SEPARATE output tree (outputs/scaleup_v2_overmatch) so the
+#     frozen Stage 7 results and their manifest/sha are never overwritten;
+#   * fintabnet only.
+#
+# Intended invocation (fixed baseline only — adaptive/random/8B are NOT re-run):
+#   uv run python scripts/scaleup/run_sweep.py \
+#       --config configs/experiment/scaleup_v2_overmatch.yaml \
+#       --datasets fintabnet --systems fixed_2b_matched
+#
+# The prompt, model adapter, held_out split, and greedy decode are byte-for-byte
+# the same as the Stage 7 sweep — only the fixed_2b tile budget differs.
+run_set_id: scaleup_v2_overmatch
+
+datasets:
+  fintabnet:
+    split_manifest_path: data/splits/scaleup_v2/fintabnet/held_out.json
+    records_path: data/fintabnet/records.json
+    image_root: data
+    frozen_budgets_path: configs/calibration/robustness_overmatch_v2_fintabnet.json
+
+model:
+  config_path: configs/models/internvl2_real.yaml
+
+prompt:
+  config_path: configs/prompts/table_parse_v2.yaml
+
+output:
+  root: outputs/scaleup_v2_overmatch
+
+random_escalation:
+  # Unused: the intended invocation filters to --systems fixed_2b_matched.
+  # Kept for config-schema parity with scaleup_v2.yaml.
+  seeds: [0, 1, 2]
