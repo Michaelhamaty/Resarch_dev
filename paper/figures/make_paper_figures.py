@@ -27,6 +27,8 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
+import numpy as np
 
 ROOT = Path(__file__).resolve().parents[2]
 OUT = Path(__file__).resolve().parent
@@ -115,27 +117,93 @@ def make_budget_response() -> None:
 
 
 def make_adaptive_scatter() -> None:
-    fig, axes = plt.subplots(2, 1, figsize=(3.4, 4.7))
-    for ax, ds in zip(axes, ("omnidocbench", "fintabnet")):
+    # Many pages score exactly 0 on both passes (structurally broken at both
+    # budgets), so they overplot as a single dot at the origin. We add stacked
+    # marginal histograms (top: first-pass, right: final) to expose that mass
+    # without jittering points -- jitter would push (0,0) pages visually below
+    # the y=x diagonal and contradict the "no page below the diagonal" property
+    # the scatter is meant to show.
+    fig = plt.figure(figsize=(3.5, 6.2))
+    outer = fig.add_gridspec(2, 1, hspace=0.46)
+    bins = np.linspace(0.0, 1.0, 21)
+    groups = ((False, "#b8b8b8", "verifier PASS (kept first pass)"),
+              (True, C_ADAPT, "verifier REPARSE"))
+    main_axes = []
+    for row, ds in enumerate(("omnidocbench", "fintabnet")):
         rows = [json.loads(l) for l in
                 (ROOT / f"outputs/scaleup_v2/analysis/diagnostic_{ds}.jsonl").open()]
         flags = json.loads(
             (ROOT / f"outputs/scaleup_v2/analysis/reparse_flags_{ds}.json").read_text()
         )
-        for trig, color, lbl in ((False, "#b8b8b8", "verifier PASS (kept first pass)"),
-                                 (True, C_ADAPT, "verifier REPARSE")):
+        inner = outer[row].subgridspec(
+            2, 2, width_ratios=[4, 1], height_ratios=[1, 4],
+            wspace=0.04, hspace=0.04,
+        )
+        ax = fig.add_subplot(inner[1, 0])
+        ax_top = fig.add_subplot(inner[0, 0], sharex=ax)
+        ax_right = fig.add_subplot(inner[1, 1], sharey=ax)
+        main_axes.append(ax)
+
+        first_by, final_by, colors = [], [], []
+        for trig, color, lbl in groups:
             xs = [r["first_pass_cell_f1"] for r in rows if flags[r["page_id"]] is trig]
             ys = [r["final_cell_f1"] for r in rows if flags[r["page_id"]] is trig]
-            ax.scatter(xs, ys, s=14, c=color, alpha=0.75, label=lbl, lw=0)
-        ax.plot([0, 1], [0, 1], color="#444444", lw=0.8, ls="--")
+            ax.scatter(xs, ys, s=18, c=color, alpha=0.85, lw=0.3,
+                       edgecolors="white", zorder=3)
+            first_by.append(xs)
+            final_by.append(ys)
+            colors.append(color)
+        ax.plot([0, 1], [0, 1], color="#444444", lw=0.8, ls="--", zorder=2)
         ax.set_xlim(-0.03, 1.0)
         ax.set_ylim(-0.03, 1.0)
-        ax.set_title(DS_LABEL[ds])
         ax.set_ylabel("final cell-F1")
         ax.grid(alpha=0.25, lw=0.5)
-    axes[1].set_xlabel("first-pass cell-F1 (at $B_{low}$)")
-    axes[0].legend(loc="lower right", frameon=False)
-    fig.tight_layout()
+
+        ax_top.hist(first_by, bins=bins, stacked=True, color=colors, lw=0)
+        ax_right.hist(final_by, bins=bins, stacked=True, orientation="horizontal",
+                      color=colors, lw=0)
+
+        # Shared count scale: the top (first-pass) and right (final) marginals
+        # use one common 0..max range and identical ticks, so the two
+        # histograms are directly comparable. Round the max up to a clean
+        # multiple and drop the "0" tick so it cannot collide with the main
+        # panel's "1.0" label at the shared boundary.
+        cnt = max(np.histogram(np.concatenate(first_by), bins)[0].max(),
+                  np.histogram(np.concatenate(final_by), bins)[0].max())
+        # Coarse step keeps the narrow right-hand histogram's tick labels from
+        # crowding; both shared axes then show only 2-3 ticks.
+        step = 50 if cnt > 60 else 20
+        top = int(np.ceil(cnt / step) * step)
+        ticks = list(range(step, top + 1, step))  # explicit, no "0" tick
+        ax_top.set_ylim(0, top)
+        ax_top.set_yticks(ticks)
+        ax_right.set_xlim(0, top)
+        ax_right.set_xticks(ticks)
+
+        ax_top.set_title(DS_LABEL[ds], fontsize=8.5)
+        ax_top.tick_params(labelbottom=False, labelsize=6)
+        ax_right.tick_params(labelleft=False, labelsize=6)
+        ax_top.set_ylabel("count", fontsize=6)
+        ax_right.set_xlabel("count", fontsize=6)
+        for a in (ax_top, ax_right):
+            a.grid(alpha=0.2, lw=0.4)
+
+    # One legend for both panels, parked in the empty below-diagonal corner of
+    # the top panel (no page falls there) so it never overlaps data.
+    legend_handles = [
+        Line2D([0], [0], marker="o", ls="none", markerfacecolor="#b8b8b8",
+               markeredgecolor="none", markersize=6,
+               label="verifier PASS (kept first pass)"),
+        Line2D([0], [0], marker="o", ls="none", markerfacecolor=C_ADAPT,
+               markeredgecolor="none", markersize=6, label="verifier REPARSE"),
+        Line2D([0], [0], color="#444444", lw=0.8, ls="--",
+               label="$y=x$ (first $=$ final)"),
+    ]
+    main_axes[0].legend(handles=legend_handles, loc="lower right",
+                        frameon=False, fontsize=6.5, handletextpad=0.4,
+                        labelspacing=0.3, borderaxespad=0.4)
+    for ax in main_axes:
+        ax.set_xlabel("first-pass cell-F1 (at $B_{low}$)")
     for ext in ("pdf", "png"):
         fig.savefig(OUT / f"adaptive_scatter.{ext}", bbox_inches="tight", dpi=220)
     plt.close(fig)

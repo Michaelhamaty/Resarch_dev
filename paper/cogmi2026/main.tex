@@ -414,7 +414,7 @@ not, so reporting both bounds the metric sensitivity of our conclusions.
 \textbf{Parse-error count}: pages whose prediction failed HTML parsing or
 span expansion outright.
 
-All means carry 95\% bootstrap confidence intervals (percentile, $10^4$
+All means carry 95\% bootstrap confidence intervals (percentile, 1000
 resamples).
 
 \subsection{Statistical protocol}
@@ -456,7 +456,8 @@ Section~\ref{sec:overmatch} for FinTabNet.
   \caption{Held-out results. Cost is mean visual tiles per page
   (realized, from Eq.~\ref{eq:cost} for two-pass systems). Cell-F1 and
   TEDS are macro means with 95\% bootstrap CIs; parse-err counts pages
-  whose prediction failed parsing or grid expansion. The random rows
+  whose prediction failed parsing or grid expansion, with its percentage
+  of the $n$ held-out pages in parentheses. The random rows
   show each seed, since the three seeds are separate runs. The 11-tile
   FinTabNet baseline is the post-hoc over-budget check of
   Section~\ref{sec:overmatch}.}
@@ -464,26 +465,26 @@ Section~\ref{sec:overmatch} for FinTabNet.
   \small
   \begin{tabular}{llrllr}
   \toprule
-  Dataset & System & Cost & Macro cell-F1 [95\% CI] & TEDS [95\% CI] & Parse-err \\
+  Dataset & System & Cost & Macro cell-F1 [95\% CI] & TEDS [95\% CI] & Parse-err (\%) \\
   \midrule
   \multirow{7}{*}{\shortstack[l]{OmniDocBench\\(n=90)}}
-   & fixed 2B low (2 tiles)      &  2.00 & 0.039 [0.010, 0.075] & 0.106 [0.067, 0.152] & 70 \\
-   & fixed 2B matched (11 tiles) & 11.00 & 0.120 [0.070, 0.173] & 0.268 [0.214, 0.325] & 57 \\
-   & adaptive 2B                 & 11.33 & 0.121 [0.071, 0.175] & 0.274 [0.214, 0.333] & 45 \\
-   & random 2B seed 0            & 11.20 & 0.123 [0.074, 0.179] & 0.249 [0.195, 0.310] & 55 \\
-   & random 2B seed 1            & 11.47 & 0.120 [0.069, 0.172] & 0.245 [0.186, 0.300] & 51 \\
-   & random 2B seed 2            & 10.13 & 0.100 [0.055, 0.149] & 0.221 [0.163, 0.280] & 61 \\
-   & fixed 8B matched (11 tiles) & 11.00 & 0.200 [0.132, 0.271] & 0.396 [0.326, 0.469] & 38 \\
+   & fixed 2B low (2 tiles)      &  2.00 & 0.039 [0.010, 0.075] & 0.106 [0.067, 0.152] & 70 (78\%) \\
+   & fixed 2B matched (11 tiles) & 11.00 & 0.120 [0.070, 0.173] & 0.268 [0.214, 0.325] & 57 (63\%) \\
+   & adaptive 2B                 & 11.33 & 0.121 [0.071, 0.175] & 0.274 [0.214, 0.333] & 45 (50\%) \\
+   & random 2B seed 0            & 11.20 & 0.123 [0.074, 0.179] & 0.249 [0.195, 0.310] & 55 (61\%) \\
+   & random 2B seed 1            & 11.47 & 0.120 [0.069, 0.172] & 0.245 [0.186, 0.300] & 51 (57\%) \\
+   & random 2B seed 2            & 10.13 & 0.100 [0.055, 0.149] & 0.221 [0.163, 0.280] & 61 (68\%) \\
+   & fixed 8B matched (11 tiles) & 11.00 & 0.200 [0.132, 0.271] & 0.396 [0.326, 0.469] & 38 (42\%) \\
   \midrule
   \multirow{8}{*}{\shortstack[l]{FinTabNet\\(n=150)}}
-   & fixed 2B low (6 tiles)      &  6.00 & 0.130 [0.089, 0.174] & 0.483 [0.435, 0.527] & 41 \\
-   & fixed 2B matched (10 tiles) & 10.00 & 0.120 [0.078, 0.164] & 0.465 [0.416, 0.508] & 37 \\
-   & fixed 2B over-budget (11 tiles) & 11.00 & 0.120 [0.078, 0.164] & 0.462 [0.414, 0.506] & 37 \\
-   & adaptive 2B                 & 10.37 & 0.133 [0.092, 0.179] & 0.492 [0.447, 0.535] & 30 \\
-   & random 2B seed 0            &  9.95 & 0.116 [0.075, 0.159] & 0.462 [0.417, 0.506] & 41 \\
-   & random 2B seed 1            &  9.84 & 0.119 [0.080, 0.162] & 0.476 [0.430, 0.519] & 44 \\
-   & random 2B seed 2            & 11.55 & 0.124 [0.085, 0.169] & 0.472 [0.426, 0.517] & 42 \\
-   & fixed 8B matched (10 tiles) & 10.00 & 0.134 [0.092, 0.182] & 0.527 [0.481, 0.573] & 46 \\
+   & fixed 2B low (6 tiles)      &  6.00 & 0.130 [0.089, 0.174] & 0.483 [0.435, 0.527] & 41 (27\%) \\
+   & fixed 2B matched (10 tiles) & 10.00 & 0.120 [0.078, 0.164] & 0.465 [0.416, 0.508] & 37 (25\%) \\
+   & fixed 2B over-budget (11 tiles) & 11.00 & 0.120 [0.078, 0.164] & 0.462 [0.414, 0.506] & 37 (25\%) \\
+   & adaptive 2B                 & 10.37 & 0.133 [0.092, 0.179] & 0.492 [0.447, 0.535] & 30 (20\%) \\
+   & random 2B seed 0            &  9.95 & 0.116 [0.075, 0.159] & 0.462 [0.417, 0.506] & 41 (27\%) \\
+   & random 2B seed 1            &  9.84 & 0.119 [0.080, 0.162] & 0.476 [0.430, 0.519] & 44 (29\%) \\
+   & random 2B seed 2            & 11.55 & 0.124 [0.085, 0.169] & 0.472 [0.426, 0.517] & 42 (28\%) \\
+   & fixed 8B matched (10 tiles) & 10.00 & 0.134 [0.092, 0.182] & 0.527 [0.481, 0.573] & 46 (31\%) \\
   \bottomrule
   \end{tabular}
 \end{table*}
@@ -491,14 +492,20 @@ Section~\ref{sec:overmatch} for FinTabNet.
 \begin{figure*}[t]
   \centering
   \includegraphics[width=0.94\textwidth]{budget_response.pdf}
-  \caption{Macro cell-F1 against mean tile budget (bars: 95\% bootstrap
-  CIs). The two datasets respond to uniform budget in opposite ways.
+  \caption{Macro cell-F1 against mean tile budget. The two datasets
+  respond to uniform budget in opposite ways.
   OmniDocBench (left) rises steeply from 2 to 11 tiles, and the adaptive
   policy lands on the fixed-budget line: selective escalation has nothing
   to add when uniform spending already pays. FinTabNet (right) is flat to
   slightly negative from 6 to 11 tiles; more uniform budget does not
   help. Yet the verifier-gated system sits above every same-cost 2B
-  alternative and at the level of the tile-matched 8B reference.}
+  alternative and at the level of the tile-matched 8B reference.
+  Error bars are \emph{marginal} per-system 95\% bootstrap CIs
+  (percentile, 1000 resamples); the gray triangles plot all three
+  random-control seeds individually, each the per-seed mean over pages,
+  not a pooled mean. The significant adaptive-versus-random result is a
+  \emph{paired} per-page test (Table~\ref{tab:tests}) and is not
+  represented by the overlap of these marginal intervals.}
   \label{fig:budget}
 \end{figure*}
 
@@ -625,7 +632,13 @@ dataset the gain tracks \emph{where} tiles were spent, not how many.
   pass is kept. Red (\textsc{reparse}) pages above the diagonal gained
   from the second pass; most OmniDocBench gains start from a first-pass
   score of zero, consistent with the \texttt{NO\_TABLE\_FOUND}-dominated
-  trigger profile. No page fell below the diagonal in these runs.}
+  trigger profile. No page fell below the diagonal in these runs. Stacked
+  marginal histograms (top: first-pass, right: final; same color coding)
+  expose the mass that overplots at the origin: $78/90$ OmniDocBench and
+  $93/150$ FinTabNet first passes score zero, dropping to $58$ and $87$ at
+  the final margin as escalation lifts $20$ and $6$ pages off the floor
+  (cf.\ Table~\ref{tab:verifier}). Points are not jittered, so the
+  diagonal relation is exact.}
   \label{fig:scatter}
 \end{figure}
 
@@ -656,29 +669,31 @@ uniform escalation lifted many pages the verifier passed.
 \subsection{Difficulty stratification}
 \label{sec:buckets}
 
-\begin{table}[t]
+\begin{table*}[t]
   \centering
-  \caption{Macro cell-F1 by difficulty bucket (held-out). The
-  very-complex bucket dominates both splits and floors near zero for
-  every 2B configuration; even the 8B reference reaches only 0.06--0.07
-  there. Ties on these pages are why the paired rank tests have few
-  informative pairs.}
+  \caption{Macro cell-F1 by difficulty bucket (held-out), reported as
+  mean [95\% bootstrap CI] (percentile, 1000 resamples) over the per-page
+  scores in each bucket. The very-complex bucket dominates both splits and
+  floors near zero for every 2B configuration; even the 8B reference
+  reaches only 0.06--0.07 there. Ties on these pages are why the paired
+  rank tests have few informative pairs; the wide intervals on the small
+  simple/complex buckets reflect their few pages.}
   \label{tab:buckets}
   \footnotesize
-  \setlength{\tabcolsep}{3pt}
-  \begin{tabular}{llrrrr}
+  \setlength{\tabcolsep}{5pt}
+  \begin{tabular}{llllll}
   \toprule
   Dataset & Bucket (n) & low & matched & adaptive & 8B \\
   \midrule
-  OmniDoc & simple (12)        & 0.179 & 0.244 & 0.228 & 0.337 \\
-  OmniDoc & complex (27)       & 0.033 & 0.240 & 0.256 & 0.379 \\
-  OmniDoc & very complex (51)  & 0.009 & 0.027 & 0.024 & 0.072 \\
-  FinTab  & simple (19)        & 0.190 & 0.142 & 0.194 & 0.202 \\
-  FinTab  & complex (40)       & 0.307 & 0.299 & 0.307 & 0.275 \\
-  FinTab  & very complex (91)  & 0.040 & 0.036 & 0.044 & 0.057 \\
+  OmniDoc & simple (12) & 0.179 [0.000, 0.429] & 0.244 [0.065, 0.476] & 0.228 [0.050, 0.464] & 0.337 [0.118, 0.581] \\
+  OmniDoc & complex (27) & 0.033 [0.007, 0.068] & 0.240 [0.131, 0.360] & 0.256 [0.144, 0.374] & 0.379 [0.242, 0.520] \\
+  OmniDoc & very complex (51) & 0.009 [0.000, 0.025] & 0.027 [0.004, 0.059] & 0.024 [0.004, 0.048] & 0.072 [0.028, 0.128] \\
+  FinTab  & simple (19) & 0.190 [0.075, 0.326] & 0.142 [0.041, 0.268] & 0.194 [0.080, 0.329] & 0.202 [0.079, 0.340] \\
+  FinTab  & complex (40) & 0.307 [0.193, 0.423] & 0.299 [0.189, 0.411] & 0.307 [0.193, 0.424] & 0.275 [0.162, 0.397] \\
+  FinTab  & very complex (91) & 0.040 [0.014, 0.070] & 0.036 [0.012, 0.067] & 0.044 [0.019, 0.076] & 0.057 [0.028, 0.091] \\
   \bottomrule
   \end{tabular}
-\end{table}
+\end{table*}
 
 Table~\ref{tab:buckets} localizes both the headroom and the ceiling. On
 FinTabNet, raising the uniform budget from 6 to 10 tiles \emph{hurts}
